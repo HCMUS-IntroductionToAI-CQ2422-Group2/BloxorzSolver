@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from enum import Enum
 
-from .sharing import Position
+from BackEnd.objects.sharing import Position
 
 
 class Orientation(str, Enum):

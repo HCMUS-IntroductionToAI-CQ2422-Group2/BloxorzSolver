@@ -2,13 +2,11 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import TYPE_CHECKING, ClassVar
+from typing import ClassVar
 
-if TYPE_CHECKING:
-    from .blocks import BlockState, GameState
-
-from .sharing import Position
-from .tiles import Tile
+from BackEnd.objects.blocks import BlockState
+from BackEnd.objects.sharing import Position
+from BackEnd.objects.tiles import Tile
 
 
 class EffectMode(str, Enum):
@@ -39,7 +37,7 @@ class Switch(Tile):
         object.__setattr__(self, "effects", tuple(self.effects))
 
     def is_activated(self, block: BlockState) -> bool:
-        return block.occupies((self.y, self.x))
+        return any(block.occupies(position) for position in self.get_positions())
 
 
 class SoftSwitch(Switch):

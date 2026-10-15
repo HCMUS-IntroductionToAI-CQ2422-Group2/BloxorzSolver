@@ -1,11 +1,9 @@
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
-from .tiles import Tile
-from .sharing import Position
+from typing import ClassVar
 
-if TYPE_CHECKING:
-    from .blocks import BlockState
-    from .sharing import GameState
+from BackEnd.objects.blocks import BlockState, GameState
+from BackEnd.objects.sharing import Position
+from BackEnd.objects.tiles import Tile
 
 
 @dataclass(frozen=True)
@@ -14,7 +12,7 @@ class Bridge(Tile):
     h: int
     bridge_id: str
     initial_open: bool = False
-    type: str = "Bridge"
+    type: ClassVar[str] = "Bridge"
 
     def get_positions(self) -> tuple[Position, ...]:
         positions = []
@@ -22,9 +20,9 @@ class Bridge(Tile):
             for dy in range(self.h):
                 positions.append((self.x + dx, self.y + dy))
         return tuple(positions)
-    
-    def is_open(self, state: 'GameState') -> bool:
+
+    def is_open(self, state: GameState) -> bool:
         return self.bridge_id in state.open_bridges
 
-    def can_support(self, block: 'BlockState', state: 'GameState') -> bool:
+    def can_support(self, block: BlockState, state: GameState) -> bool:
         return self.is_open(state)
