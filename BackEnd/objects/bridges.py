@@ -1,13 +1,11 @@
-from __future__ import annotations
-
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, ClassVar
+from typing import TYPE_CHECKING
+from .tiles import Tile
+from .sharing import Position
 
 if TYPE_CHECKING:
-    from .blocks import BlockState, GameState
-
-from .sharing import Position
-from .tiles import Tile
+    from .blocks import BlockState
+    from .sharing import GameState
 
 
 @dataclass(frozen=True)
@@ -16,14 +14,17 @@ class Bridge(Tile):
     h: int
     bridge_id: str
     initial_open: bool = False
-    type: ClassVar[str] = "Bridge"
+    type: str = "Bridge"
 
     def get_positions(self) -> tuple[Position, ...]:
-        return tuple((r, c) for r in range(self.y, self.y + self.h)
-                     for c in range(self.x, self.x + self.w))
-
-    def is_open(self, state: GameState) -> bool:
+        positions = []
+        for dx in range(self.w):
+            for dy in range(self.h):
+                positions.append((self.x + dx, self.y + dy))
+        return tuple(positions)
+    
+    def is_open(self, state: 'GameState') -> bool:
         return self.bridge_id in state.open_bridges
 
-    def can_support(self, block: BlockState, state: GameState) -> bool:
+    def can_support(self, block: 'BlockState', state: 'GameState') -> bool:
         return self.is_open(state)

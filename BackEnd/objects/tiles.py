@@ -1,45 +1,49 @@
-"""Tile coordinates use x=column, y=row; returned positions use (row, col)."""
-from __future__ import annotations
-
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, ClassVar
+from typing import TYPE_CHECKING
 
+# Trick để né lỗi import chéo lúc chạy, chỉ dùng để gợi ý code (type hint)
 if TYPE_CHECKING:
-    from .blocks import BlockState, GameState
+    from .blocks import BlockState
+    from .sharing import GameState
 
 from .sharing import Position
-
 
 @dataclass(frozen=True)
 class Tile:
     x: int
     y: int
-    type: ClassVar[str] = "Tile"
+    type: str
 
     def get_positions(self) -> tuple[Position, ...]:
-        return ((self.y, self.x),)
+        return ((self.x, self.y),)
 
-    def can_support(self, block: BlockState, state: GameState) -> bool:
+    def can_support(self, block: 'BlockState', state: 'GameState') -> bool:
         return True
 
 
 class FloorTile(Tile):
     type = "Floor"
+    
+    def can_support(self, block: 'BlockState', state: 'GameState') -> bool:
+        return True
 
 
 class EmptyCell(Tile):
     type = "Empty"
 
-    def can_support(self, block: BlockState, state: GameState) -> bool:
+    def can_support(self, block: 'BlockState', state: 'GameState') -> bool:
         return False
 
 
 class Goal(Tile):
     type = "Goal"
 
+    def can_support(self, block: 'BlockState', state: 'GameState') -> bool:
+        return True
+
 
 class FragileTile(Tile):
     type = "Fragile"
 
-    def can_support(self, block: BlockState, state: GameState) -> bool:
+    def can_support(self, block: 'BlockState', state: 'GameState') -> bool:
         return not block.is_standing()
