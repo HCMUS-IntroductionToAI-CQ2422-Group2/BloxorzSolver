@@ -1,6 +1,4 @@
-# Thư viện cho GUI
-pygame==2.5.2
-
 # Các thư viện chuẩn bị cho việc vẽ chart trong report sau này
 matplotlib==3.8.2
 numpy==1.26.2
+pygame-ce==2.5.8
