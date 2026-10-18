@@ -12,6 +12,7 @@ PANEL = "#271f20"
 TEXT = "#eaf1fb"
 MUTED = "#c3aaa0"
 ACCENT = "#dba66b"
+BLOCK_HEIGHT_SCALE = 1.4
 
 
 class Renderer:
@@ -53,11 +54,14 @@ class Renderer:
         positions = {p for tile in board.tile + board.bridge for p in tile.get_positions()}
         us = [x-y for x,y in positions]
         vs = [x+y for x,y in positions]
-        scale = min(36, (area.width-100)/(max(us)-min(us)+2), (area.height-110)/((max(vs)-min(vs)+2)*.5))
+        scale = min(46, (area.width-100)/(max(us)-min(us)+2), (area.height-110)/((max(vs)-min(vs)+2)*.5))
         ox = area.centerx - (min(us)+max(us)+0)*scale/2
         oy = area.centery - (min(vs)+max(vs)+2)*scale/4 + 45
         def point(x,y,z=0):
             return (ox+(x-y)*scale, oy+(x+y)*scale*.5-z*scale)
+        def block_point(x,y,z=0):
+            # Exaggerate only the block's height so it reads as tall/3D without resizing tiles.
+            return point(x, y, z*BLOCK_HEIGHT_SCALE)
         def prism(x,y,w,d,z,height,wood=False,color="#a5b6af"):
             base = [point(x,y,z),point(x+w,y,z),point(x+w,y+d,z),point(x,y+d,z)]
             top = [point(x,y,z+height),point(x+w,y,z+height),point(x+w,y+d,z+height),point(x,y+d,z+height)]
@@ -91,10 +95,23 @@ class Renderer:
             elif isinstance(tile,Bridge) and not tile.is_open(bridge_state):
                 pygame.draw.line(surface,"#d28383",point(x+.2,y+.2,.02),point(x+.8,y+.8,.02),2)
             elif isinstance(tile,(SoftSwitch,HeavySwitch,SplitSwitch)):
-                label="O" if isinstance(tile,SoftSwitch) else "X" if isinstance(tile,HeavySwitch) else "( )"
-                glyph=self.fonts[16].render(label,True,"#282724")
-                surface.blit(glyph,glyph.get_rect(center=center))
-        draw_wood(surface, state, point, scale, animation)
+                if isinstance(tile,SoftSwitch):
+                    badge,ring,label,text_color="#8fd9c4","#5fae99","O","#163c33"
+                elif isinstance(tile,HeavySwitch):
+                    badge,ring,label,text_color="#e2896a","#b5583a","X","#3a1810"
+                else:
+                    badge,ring,label,text_color="#b7a3eb","#7f69bf","","#241a3d"
+                radius = max(8, scale*.26)
+                pygame.draw.circle(surface,ring,center,radius+2)
+                pygame.draw.circle(surface,badge,center,radius)
+                if label:
+                    glyph=self.fonts[18].render(label,True,text_color)
+                    surface.blit(glyph,glyph.get_rect(center=center))
+                else:
+                    gap=radius*.42
+                    pygame.draw.circle(surface,text_color,(center[0]-gap,center[1]),radius*.32)
+                    pygame.draw.circle(surface,text_color,(center[0]+gap,center[1]),radius*.32)
+        draw_wood(surface, state, block_point, scale, animation)
 
     def legend(self, surface, x, y):
         items = [("#8799b2", "Floor"), ("#eeaa65", "Fragile"),

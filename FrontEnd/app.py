@@ -21,6 +21,16 @@ KEYS = {pygame.K_UP: Move.UP, pygame.K_w: Move.UP,
         pygame.K_RIGHT: Move.RIGHT, pygame.K_d: Move.RIGHT,
         pygame.K_SPACE: Move.SWITCH}
 
+LOSS_ANIMATION_SECONDS = 1.1
+
+
+def _ease_out_back(t):
+    """Overshoot easing (0..1 -> slightly past 1 then settle) used for the star pop-in."""
+    t = max(0.0, min(1.0, t))
+    c1 = 1.70158
+    c3 = c1 + 1
+    return 1 + c3 * (t - 1) ** 3 + c1 * (t - 1) ** 2
+
 
 class App:
     def __init__(self, progress_path=None):
@@ -35,6 +45,7 @@ class App:
         self.progress = Progress(progress_path)
         self.stage_started = monotonic()
         self.victory = None
+        self.victory_shown = 0
         self.game = GameController(self.levels[0])
         self.buttons = []
         self.worker = None
@@ -133,13 +144,17 @@ class App:
         except OSError as error:
             self.message = f"Export failed: {error}"
 
-    def button(self, label, rect, callback, enabled=True, selected=False):
+    def button(self, label, rect, callback, enabled=True, selected=False, emphasized=False):
         rect = pygame.Rect(rect)
         hover = rect.collidepoint(pygame.mouse.get_pos()) and enabled
         color = ACCENT if selected else ("#64463b" if hover else "#412d29")
         if not enabled:
             color = "#2f2424"
+        if emphasized:
+            pygame.draw.rect(self.screen, "#1a1210", rect.move(0, 4), border_radius=9)
         pygame.draw.rect(self.screen, color, rect, border_radius=7)
+        if emphasized:
+            pygame.draw.rect(self.screen, ACCENT, rect, 2, border_radius=7)
         text_color = BG if selected else (TEXT if enabled else "#586d88")
         text = self.renderer.fonts[16].render(label, True, text_color)
         self.screen.blit(text, text.get_rect(center=rect.center))
@@ -157,6 +172,7 @@ class App:
 
     def draw(self):
         self.check_victory()
+        self.check_defeat()
         self.buttons = []
         surface, r, game = self.screen, self.renderer, self.game
         width, height = surface.get_size()
@@ -171,7 +187,7 @@ class App:
         pygame.draw.line(surface, "#f8d687", (cx-3, 60), (cx+3, 60), 2)
         r.text(surface, self.maps[game.map_name]["name"] + "  /  " + str(len(game.history)) + " moves", (38, 113), 18)
         r.board(surface, game.board, game.state, pygame.Rect(50, 160, width-100, height-300), self.animation)
-        status = {"playing": "", "won": "STAGE COMPLETE!", "lost": "You fell. Press R to restart."}[game.status]
+        status = {"playing": "", "won": "STAGE COMPLETE!", "lost": "You fell! Restarting..."}[game.status]
         r.text(surface, status, (38, height-107), 22, ACCENT)
         r.text(surface, "Arrows / WASD: move   |   Space: switch cube   |   R: restart   |   Esc: close menu", (38, height-69), 16, MUTED)
 
@@ -182,7 +198,9 @@ class App:
             surface.blit(shade, (0, 0))
             box = pygame.Rect(width//2-270, height//2-250, 540, 500)
             pygame.draw.rect(surface, PANEL, box, border_radius=24)
-            pygame.draw.rect(surface, "#526d75", box, 1, border_radius=24)
+            border_color = ACCENT if self.panel == "win" else "#526d75"
+            border_width = 3 if self.panel == "win" else 1
+            pygame.draw.rect(surface, border_color, box, border_width, border_radius=24)
             x, y = box.x+32, box.y+30
             self.button("X", (box.right-70, y, 40, 36), lambda: self.toggle_panel(self.panel))
             if self.panel == "win":
@@ -195,7 +213,7 @@ class App:
                     self.button(str(index+1).zfill(2) if self.progress.unlocked(level) else "Locked", (x+col*96, y+85+row*57, 86, 46), lambda name=level: self.select_stage(name), selected=level == game.map_name, enabled=self.progress.unlocked(level))
                 self.button("Restart stage", (x, y+330, 220, 44), lambda: self.select_stage(game.map_name))
                 self.button("Resume", (x+238, y+330, 236, 44), lambda: self.toggle_panel("menu"))
-                r.text(surface, "O Soft   X Heavy   ( ) Split   Orange: fragile", (x, y+404), 16, MUTED)
+                r.text(surface, "O Soft   X Heavy   •• Split   Orange: fragile", (x, y+404), 16, MUTED)
             else:
                 r.text(surface, "Need a little light?", (x, y), 22)
                 r.text(surface, "Choose a search algorithm", (x, y+48), 16, MUTED)
@@ -246,12 +264,12 @@ class App:
         self.animation = {"before": before, "after": self.game.state,
                           "action": action, "status": self.game.status,
                           "start": monotonic(),
-                          "duration": .28 if self.game.status == "playing" else 1.1}
+                          "duration": .28 if self.game.status == "playing" else LOSS_ANIMATION_SECONDS}
 
     def check_victory(self):
         if self.game.status != "won" or self.victory is not None:
             return
-        if self.animation and monotonic() - self.animation["start"] < 1.1:
+        if self.animation and monotonic() - self.animation["start"] < LOSS_ANIMATION_SECONDS:
             return
         moves = len(self.game.history)
         stars = stars_for(self.game.map_name, moves)
@@ -261,28 +279,52 @@ class App:
         except OSError:
             saved = False
         self.victory = (moves, getattr(self, "finished_seconds", 0), stars, saved)
+        self.victory_shown = monotonic()
         self.panel = "win"
+
+    def check_defeat(self):
+        """After a fall finishes playing out, restart the stage without requiring R."""
+        if self.game.status != "lost":
+            return
+        if (self.animation and self.animation.get("status") == "lost"
+                and monotonic() - self.animation["start"] < LOSS_ANIMATION_SECONDS):
+            return
+        self.load_level(self.game.map_name)
 
     def draw_victory(self, x, y):
         r, surface = self.renderer, self.screen
         moves, seconds, stars, saved = self.victory
+        elapsed = monotonic() - self.victory_shown
         r.text(surface, "Stage complete", (x, y), 32)
+        r.text(surface, "Nice rolling!", (x, y+34), 16, MUTED)
+
+        star_center_y = y+150
+        glow = pygame.Surface(surface.get_size(), pygame.SRCALPHA)
+        glow_x, glow_y = x+237, star_center_y
+        for radius in range(100, 20, -4):
+            pygame.draw.circle(glow, (255, 196, 110, 5), (glow_x, glow_y), radius)
+        surface.blit(glow, (0, 0))
         for index in range(3):
-            cx, cy = x+110+index*125, y+115
-            points = [(cx+math.cos(-math.pi/2+i*math.pi/5)*(37 if i%2==0 else 17),
-                       cy+math.sin(-math.pi/2+i*math.pi/5)*(37 if i%2==0 else 17)) for i in range(10)]
+            local_t = (elapsed - index*.12) / .3
+            pop = 0 if local_t <= 0 else _ease_out_back(min(1, local_t))
+            cx, cy = x+120+index*117, star_center_y
+            points = [(cx+math.cos(-math.pi/2+i*math.pi/5)*(37 if i%2==0 else 17)*pop,
+                       cy+math.sin(-math.pi/2+i*math.pi/5)*(37 if i%2==0 else 17)*pop) for i in range(10)]
             pygame.draw.polygon(surface, "#efbc65" if index<stars else "#514543", points)
-        r.text(surface, f"Moves: {moves}       Time: {int(seconds)//60:02}:{int(seconds)%60:02}", (x+65, y+188), 22)
+
+        r.text(surface, f"Moves: {moves}       Time: {int(seconds)//60:02}:{int(seconds)%60:02}", (x+58, y+230), 22)
         target = TARGETS[self.game.map_name]
-        r.text(surface, f"3 stars: {target} moves   /   2 stars: {int(target*1.5)} moves", (x+48, y+237), 16, MUTED)
-        self.button("Play again", (x,y+304,224,48), lambda: self.select_stage(self.game.map_name))
+        r.text(surface, f"3 stars: {target} moves   /   2 stars: {int(target*1.5)} moves", (x+40, y+268), 16, MUTED)
+        pygame.draw.line(surface, "#4a3a32", (x, y+312), (x+474, y+312), 1)
+
+        self.button("Play again", (x, y+340, 224, 52), lambda: self.select_stage(self.game.map_name), emphasized=True)
         index = self.levels.index(self.game.map_name)
         if index+1 < len(self.levels):
-            self.button("Next stage", (x+240,y+304,234,48), lambda: self.select_stage(self.levels[index+1]))
+            self.button("Next stage", (x+240, y+340, 234, 52), lambda: self.select_stage(self.levels[index+1]), emphasized=True)
         else:
-            self.button("All stages complete", (x+240,y+304,234,48), lambda: self.toggle_panel("menu"))
+            self.button("All stages complete", (x+240, y+340, 234, 52), lambda: self.toggle_panel("menu"))
         if not saved:
-            r.text(surface, "Progress could not be saved.", (x,y+386), 16, MUTED)
+            r.text(surface, "Progress could not be saved.", (x, y+412), 16, MUTED)
 
     def run(self, frames=None, screenshot=None):
         frame = 0
