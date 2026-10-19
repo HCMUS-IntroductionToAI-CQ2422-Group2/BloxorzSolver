@@ -10,6 +10,10 @@ from BackEnd.Solver.SearchNode import SearchNode
 class BaseSolver(ABC):
     def __init__(self, rules: GameRules):
         self.rules = rules
+        for item in self.rules.board.tile:
+            if item.type == "Goal": 
+                self.x_goal, self.y_goal = item.x, item.y
+
 
     def successors(self, state: GameState):
         """Sinh các trạng thái kế tiếp hợp lệ."""
