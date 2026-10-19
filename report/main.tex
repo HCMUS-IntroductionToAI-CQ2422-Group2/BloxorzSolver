@@ -1,0 +1,87 @@
+% !TEX program = pdflatex
+% ==============================================================================
+% BIỂU MẪU BÁO CÁO VÀ BÀI TẬP KHOA CÔNG NGHỆ THÔNG TIN - ĐH KHTN (ĐHQG-HCM)
+% Biên dịch bằng: PDFLaTeX
+% ==============================================================================
+\documentclass[12pt,a4paper]{article}
+\usepackage{scrextend}
+\changefontsizes{13pt}
+
+% Nạp gói cấu hình chuẩn nhận diện FIT - HCMUS
+\usepackage{fit_hcmus}
+
+% ==============================================================================
+% KHAI BÁO THÔNG TIN BÀI TẬP / ĐỒ ÁN
+% ==============================================================================
+\courseid{CSC14003}
+\coursename{Cơ Sở Trí Tuệ Nhân Tạo}
+\reportsubtitle{BÁO CÁO ĐỒ ÁN MÔN HỌC }
+\title{Project 1: Blozxor Solver}
+\instructor{%
+    \begin{tabular}[t]{@{}l@{}}
+        TS. Bùi Tiến Lên \\
+        TA. Nguyễn Thanh Tình
+    \end{tabular}%
+}
+\classid{CQ2024/22}
+\academicyear{Học kỳ I, 2026 - 2027}
+
+% Khai báo danh sách sinh viên thực hiện
+\author{
+    \centering
+    \begin{tabular}{c}
+        Ngô Hoàng Minh - 24120381 \\
+        Nguyễn Xuân Lộc - 24120369 \\
+        Đỗ Ngọc Hải - 24120300 \\
+        Nguyễn Thành Bảo - 24120023 \\
+        Phan Nhật Minh - 24120384 \\
+    \end{tabular}
+}
+
+% ==============================================================================
+% CHỌN CHẾ ĐỘ HIỂN THỊ (PROJECT HOẶC ASSIGNMENT/LAB)
+% Đặt true nếu là Báo cáo đồ án (có trang bìa riêng, mục lục)
+% Đặt false nếu là Bài tập cá nhân / Lab ngắn gọn (dùng header đầu trang 1)
+% ==============================================================================
+\newif\ifisprojectreport
+\isprojectreporttrue % <--- ĐỔI THÀNH \isprojectreportfalse CHO BÀI TẬP NGẮN
+
+\begin{document}
+
+\ifisprojectreport
+    % --- CHẾ ĐỘ 1: BÁO CÁO ĐỒ ÁN MÔN HỌC (PROJECT REPORT) ---
+    % Avoid reusing the first page anchor for the unnumbered cover.
+    \hypersetup{pageanchor=false}
+    \makecoverpage
+    \hypersetup{pageanchor=true}
+    
+    % Trang Mục lục (chỉ hiển thị số trang La Mã ở dưới, không có header)
+    \pagestyle{plain}
+    \pagenumbering{roman}
+    \tableofcontents
+    \newpage
+    % \listoffigures % Bỏ comment nếu bài viết có nhiều hình ảnh
+    % \listoftables  % Bỏ comment nếu bài viết có nhiều bảng biểu
+    
+    % Bắt đầu nội dung chính: Bật Header chuẩn và đánh số trang Ả Rập
+    \pagestyle{fancy}
+    \pagenumbering{arabic}
+\else
+    % --- CHẾ ĐỘ 2: BÀI TẬP THỰC HÀNH / LAB NGẮN (ASSIGNMENT / LAB) ---
+    \pagestyle{fancy}
+    \makeassignmentheader
+    \pagenumbering{arabic}
+\fi
+
+% ==============================================================================
+% CÁC CHƯƠNG MỤC NỘI DUNG (SECTIONS)
+% ==============================================================================
+\input{sections/01_thong_tin_nhom.tex}
+% ==============================================================================
+% TÀI LIỆU THAM KHẢO (BIBLIOGRAPHY)
+% ==============================================================================
+\newpage
+\bibliographystyle{plain}
+\bibliography{references}
+
+\end{document}
