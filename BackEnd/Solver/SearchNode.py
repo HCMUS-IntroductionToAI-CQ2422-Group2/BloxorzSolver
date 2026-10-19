@@ -1,5 +1,5 @@
-from dataclasses import dataclass
 from __future__ import annotations
+from dataclasses import dataclass
 from BackEnd.objects.blocks import GameState
 from BackEnd.objects.sharing import Move
 

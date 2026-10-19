@@ -13,6 +13,7 @@ class BaseSolver(ABC):
         for item in self.rules.board.tile:
             if item.type == "Goal": 
                 self.x_goal, self.y_goal = item.x, item.y
+                break
 
 
     def successors(self, state: GameState):
