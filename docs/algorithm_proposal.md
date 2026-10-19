@@ -1,0 +1,106 @@
+# Bloxorz Solver – Đặc tả bài toán Search
+
+Tài liệu thống nhất cho việc cài đặt **BFS, DFS, UCS và A\*** trong repository [BloxorzSolver](https://github.com/HCMUS-IntroductionToAI-CQ2422-Group2/BloxorzSolver).
+
+## 1. Phát biểu bài toán
+
+**Yêu cầu:** Với một màn chơi Bloxorz, tìm chuỗi hành động hợp lệ đưa khối từ trạng thái ban đầu đến ô đích. Trạng thái chiến thắng yêu cầu **khối nguyên vẹn đứng thẳng trên ô đích**. BFS, UCS và A* (với heuristic phù hợp) hướng đến lời giải ít hành động nhất; DFS chỉ cần tìm lời giải hợp lệ.
+
+Mô hình hóa bài toán: **\(P = (S, s_0, A, T, G, c)\)**.
+
+| Thành phần | Định nghĩa thống nhất |
+|---|---|
+| **State \(S\)** | `GameState(block, open_bridges)`, trong đó `block = BlockState(positions, orientation, active_cube)`. `orientation` gồm `STANDING`, `HORIZONTAL`, `VERTICAL`, `SPLIT`; `open_bridges` chứa ID các cầu đang mở. |
+| **Initial State \(s_0\)** | `board.game_state` sau khi gọi `init_map(map_name)`. Khối ban đầu đứng thẳng; trạng thái cầu lấy từ `initial_open`. |
+| **Actions \(A\)** | `UP`, `DOWN`, `LEFT`, `RIGHT`, `SWITCH`. `SWITCH` chỉ hợp lệ khi khối tách và dùng để đổi khối đang điều khiển. |
+| **Transition \(T(s,a)\)** | `rules.apply_action(s, a)` trả về `GameState` mới hoặc `None` nếu không hợp lệ. Hàm này xử lý lăn khối, công tắc, cầu, tách và hợp nhất khối. |
+| **Goal Test \(G(s)\)** | `rules.is_goal(s)`: trạng thái hợp lệ và khối **đứng thẳng** tại ô đích. |
+| **Step Cost \(c\)** | Mọi hành động hợp lệ có chi phí **1**, kể cả `SWITCH`. Do đó `path_cost = len(actions)`. |
+
+**Quy tắc chung:**
+- Dùng trực tiếp `GameState` làm khóa `visited`/`best_cost`. Không chỉ lưu tọa độ: **hướng khối, khối đang điều khiển và trạng thái cầu** đều ảnh hưởng đến các bước tiếp theo.
+- Chỉ sinh trạng thái kế tiếp bằng `GameRules.apply_action()`; không viết lại luật chơi trong từng thuật toán.
+- Một hành động không hợp lệ (`None`) **không** được thêm vào Frontier.
+- Thống nhất thứ tự duyệt: `UP → DOWN → LEFT → RIGHT → SWITCH`. Với DFS dùng stack, lưu ý thứ tự `push` ngược nếu muốn mở rộng theo thứ tự này.
+- Giải từ cùng một `initial_state` khi so sánh thuật toán; không thay đổi `Board` hoặc State đầu vào trong quá trình tìm kiếm.
+
+## 2. Các class OOP cần cài đặt thêm
+
+Nên bổ sung vào `BackEnd/search/` (hoặc một module tương đương), **không sửa các class luật chơi hiện có**.
+
+| Class | Trách nhiệm chính |
+|---|---|
+| `SearchNode` (`dataclass`) | Lưu `state`, `parent`, `action`, `g_cost`, `depth` để truy vết lời giải. |
+| `SearchResult` (`dataclass`) | Lưu `algorithm`, `status`, `actions`, `expanded_nodes`, `search_time_s`, `peak_memory_bytes` (nếu đo). `path_cost = len(actions)` khi giải thành công. |
+| `BaseSolver` | Chứa `rules: GameRules`, hàm sinh successors, hàm truy vết đường đi; quy định giao diện `solve(initial_state) -> SearchResult`. |
+| `BFSSolver` | Cài BFS với FIFO queue. |
+| `DFSSolver` | Cài DFS với LIFO stack và chống lặp trạng thái. |
+| `UCSSolver` | Cài UCS với priority queue ưu tiên `g_cost`; lưu chi phí tốt nhất theo State. |
+| `AStarSolver` | Cài A* với priority queue ưu tiên `f = g + h`; lưu chi phí tốt nhất theo State và hỗ trợ cập nhật đường đi tốt hơn. |
+
+> `SearchNode` và `SearchResult` là cấu trúc dữ liệu dùng chung. Không cần tạo lại `Board`, `BlockState`, `GameState`, `Move` hoặc `GameRules`.
+
+## 3. Các hàm cần sử dụng / cài đặt
+
+### 3.1. Hàm có sẵn trong repository
+
+```python
+from BackEnd.init_map import init_map
+from BackEnd.logic.game_rules import GameRules
+from BackEnd.objects.sharing import Move
+
+board = init_map("map01")
+rules = GameRules(board)
+initial_state = board.game_state
+
+rules.apply_action(state, action)  # GameState mới hoặc None
+rules.get_valid_actions(state)    # Danh sách Move hợp lệ
+rules.is_valid(state)             # Kiểm tra State hợp lệ
+rules.is_goal(state)              # Kiểm tra thắng
+```
+
+### 3.2. Hàm nhóm cần cài đặt
+
+```python
+class BaseSolver:
+    def __init__(self, rules: GameRules): ...
+
+    def successors(self, state):
+        """Sinh (action, next_state, cost=1) theo thứ tự chung."""
+        for action in (
+            Move.UP, Move.DOWN, Move.LEFT, Move.RIGHT, Move.SWITCH
+        ):
+            next_state = self.rules.apply_action(state, action)
+            if next_state is not None:
+                yield action, next_state, 1
+
+    def reconstruct_path(self, goal_node):
+        """Lần theo parent để trả về list[Move] từ đầu đến đích."""
+        ...
+
+    def solve(self, initial_state):
+        """Trả về SearchResult; được ghi đè ở từng thuật toán."""
+        raise NotImplementedError
+
+class AStarSolver(BaseSolver):
+    def heuristic(self, state) -> float:
+        """Ước lượng chi phí còn lại; mặc định có thể dùng h=0."""
+        return 0
+```
+
+**Giao diện gọi thống nhất:**
+
+```python
+solver = BFSSolver(rules)  # Hoặc DFSSolver / UCSSolver / AStarSolver
+result = solver.solve(initial_state)
+```
+
+**Quy ước kết quả và đo lường:**
+- `status`: `solved`, `no_solution`, `limit` hoặc `error`; không coi hết thời gian là vô nghiệm.
+- `actions`: `list[Move]`, gồm cả `SWITCH`; phải replay được từ State đầu vào và kết thúc với `rules.is_goal(state) == True`.
+- `expanded_nodes`: số Node thực sự mở rộng (sinh successors), không tính entry cũ/trùng bị bỏ qua.
+- BFS/UCS phải cho **cùng độ dài lời giải tối ưu** vì mọi bước có chi phí 1. A* chỉ được khẳng định tối ưu khi heuristic và cách xử lý Frontier bảo đảm tính tối ưu; `h=0` là lựa chọn cơ sở an toàn.
+
+**Kiểm thử:** chạy lại chuỗi `actions` qua `apply_action()` và xác nhận Goal; kiểm tra thêm các màn có cầu/công tắc (`map02`), ô dễ vỡ (`map04`) và tách khối (`map09`).
+
+**Nguồn đối chiếu:** `BackEnd/logic/game_rules.py`, `BackEnd/objects/blocks.py`, `BackEnd/objects/sharing.py`, `BackEnd/init_map.py`, `tests/test_game_rules.py`, `tests/test_maps.py` (nhánh `main`, commit `c560ee3`).
