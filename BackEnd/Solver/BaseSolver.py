@@ -4,7 +4,7 @@ from BackEnd.logic.game_rules import GameRules
 from BackEnd.objects.blocks import GameState
 from BackEnd.objects.sharing import Move
 
-from .search_node import SearchNode
+from BackEnd.Solver.SearchNode import SearchNode
 
 
 class BaseSolver(ABC):
