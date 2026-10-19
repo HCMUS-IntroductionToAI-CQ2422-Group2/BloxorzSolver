@@ -1,7 +1,5 @@
 # Bloxorz Solver – Đặc tả bài toán Search
 
-Tài liệu thống nhất cho việc cài đặt **BFS, DFS, UCS và A\*** trong repository [BloxorzSolver](https://github.com/HCMUS-IntroductionToAI-CQ2422-Group2/BloxorzSolver).
-
 ## 1. Phát biểu bài toán
 
 **Yêu cầu:** Với một màn chơi Bloxorz, tìm chuỗi hành động hợp lệ đưa khối từ trạng thái ban đầu đến ô đích. Trạng thái chiến thắng yêu cầu **khối nguyên vẹn đứng thẳng trên ô đích**. BFS, UCS và A* (với heuristic phù hợp) hướng đến lời giải ít hành động nhất; DFS chỉ cần tìm lời giải hợp lệ.
@@ -25,8 +23,6 @@ Mô hình hóa bài toán: **\(P = (S, s_0, A, T, G, c)\)**.
 - Giải từ cùng một `initial_state` khi so sánh thuật toán; không thay đổi `Board` hoặc State đầu vào trong quá trình tìm kiếm.
 
 ## 2. Các class OOP cần cài đặt thêm
-
-Nên bổ sung vào `BackEnd/search/` (hoặc một module tương đương), **không sửa các class luật chơi hiện có**.
 
 | Class | Trách nhiệm chính |
 |---|---|
@@ -102,5 +98,3 @@ result = solver.solve(initial_state)
 - BFS/UCS phải cho **cùng độ dài lời giải tối ưu** vì mọi bước có chi phí 1. A* chỉ được khẳng định tối ưu khi heuristic và cách xử lý Frontier bảo đảm tính tối ưu; `h=0` là lựa chọn cơ sở an toàn.
 
 **Kiểm thử:** chạy lại chuỗi `actions` qua `apply_action()` và xác nhận Goal; kiểm tra thêm các màn có cầu/công tắc (`map02`), ô dễ vỡ (`map04`) và tách khối (`map09`).
-
-**Nguồn đối chiếu:** `BackEnd/logic/game_rules.py`, `BackEnd/objects/blocks.py`, `BackEnd/objects/sharing.py`, `BackEnd/init_map.py`, `tests/test_game_rules.py`, `tests/test_maps.py` (nhánh `main`, commit `c560ee3`).
