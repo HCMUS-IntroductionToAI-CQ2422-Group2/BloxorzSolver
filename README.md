@@ -31,7 +31,10 @@ Python versions (use Python 3.11 for that full requirements file).
 
 - Select any of the 20 numbered stages. New game and Restart reset the selected
   stage, including its initial bridges. R is the restart shortcut.
-- Arrow keys or WASD roll the block. Space changes the active split cube.
+- Arrow keys or WASD follow the visible edges of the isometric board:
+  Up/W goes upper-left, Right/D upper-right, Down/S lower-right, and Left/A
+  lower-left. One extra input can wait until the current roll finishes; opening
+  a menu or restarting clears that input. Space changes the active split cube.
   A mint outline identifies that cube. Space is ignored for an intact block.
 - Land upright in the dark, mint-outlined goal to win. An illegal roll shows a
   loss message and preserves the last supported position until restart.

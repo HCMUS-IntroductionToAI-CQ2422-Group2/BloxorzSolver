@@ -15,10 +15,11 @@ from BackEnd.objects.sharing import Move
 from FrontEnd.controller import GameController
 from FrontEnd.renderer import ACCENT, BG, MUTED, PANEL, TEXT, Renderer
 
-KEYS = {pygame.K_UP: Move.UP, pygame.K_w: Move.UP,
-        pygame.K_DOWN: Move.DOWN, pygame.K_s: Move.DOWN,
-        pygame.K_LEFT: Move.LEFT, pygame.K_a: Move.LEFT,
-        pygame.K_RIGHT: Move.RIGHT, pygame.K_d: Move.RIGHT,
+# Match the four visible edges of the isometric board: NW, SE, SW, NE.
+KEYS = {pygame.K_UP: Move.LEFT, pygame.K_w: Move.LEFT,
+        pygame.K_DOWN: Move.RIGHT, pygame.K_s: Move.RIGHT,
+        pygame.K_LEFT: Move.DOWN, pygame.K_a: Move.DOWN,
+        pygame.K_RIGHT: Move.UP, pygame.K_d: Move.UP,
         pygame.K_SPACE: Move.SWITCH}
 
 LOSS_ANIMATION_SECONDS = 1.1
@@ -59,6 +60,7 @@ class App:
         self.running = True
         self.panel = None
         self.animation = None
+        self.pending_action = None
 
     def cancel_search(self):
         if self.worker is not None:
@@ -79,6 +81,7 @@ class App:
         self.victory = None
         self.panel = None
         self.animation = None
+        self.pending_action = None
         self.game.load_level(name)
         self.message = "Arrow keys / WASD to roll. Space to switch cubes."
 
@@ -161,6 +164,7 @@ class App:
         self.buttons.append((rect, callback, enabled))
 
     def toggle_panel(self, name):
+        self.pending_action = None
         self.panel = None if self.panel == name else name
 
     def select_stage(self, name):
@@ -189,7 +193,8 @@ class App:
         r.board(surface, game.board, game.state, pygame.Rect(50, 160, width-100, height-300), self.animation)
         status = {"playing": "", "won": "STAGE COMPLETE!", "lost": "You fell! Restarting..."}[game.status]
         r.text(surface, status, (38, height-107), 22, ACCENT)
-        r.text(surface, "Arrows / WASD: move   |   Space: switch cube   |   R: restart   |   Esc: close menu", (38, height-69), 16, MUTED)
+        r.text(surface, "Up/W: upper-left   Right/D: upper-right   Down/S: lower-right   Left/A: lower-left", (38, height-79), 16, MUTED)
+        r.text(surface, "Space: switch cube   |   R: restart   |   Esc: close menu", (38, height-55), 16, MUTED)
 
         if self.panel:
             self.buttons = []
@@ -247,13 +252,17 @@ class App:
                 self.cancel_search()
                 self.game.replaying = False
             elif event.key in KEYS and self.worker is None and not self.game.replaying:
+                self.process_pending_move()
                 self.animate_move(KEYS[event.key])
 
     def animate_move(self, action):
-        if self.animation and monotonic() - self.animation["start"] < self.animation["duration"]:
-            return
         if self.game.status != "playing":
             return
+        if self.animation and monotonic() - self.animation["start"] < self.animation["duration"]:
+            if self.pending_action is None:
+                self.pending_action = action
+            return
+        self.pending_action = None
         before = self.game.state
         if action == Move.SWITCH:
             self.game.move(action)
@@ -265,6 +274,18 @@ class App:
                           "action": action, "status": self.game.status,
                           "start": monotonic(),
                           "duration": .28 if self.game.status == "playing" else LOSS_ANIMATION_SECONDS}
+
+    def process_pending_move(self):
+        if self.pending_action is None:
+            return
+        if self.panel or self.worker is not None or self.game.replaying or self.game.status != "playing":
+            self.pending_action = None
+            return
+        if self.animation and monotonic() - self.animation["start"] < self.animation["duration"]:
+            return
+        action = self.pending_action
+        self.pending_action = None
+        self.animate_move(action)
 
     def check_victory(self):
         if self.game.status != "won" or self.victory is not None:
@@ -334,6 +355,7 @@ class App:
                 for event in pygame.event.get():
                     self.event(event)
                 self.poll_search()
+                self.process_pending_move()
                 if self.game.replaying and monotonic() - self.last_step >= 1 / self.speed:
                     self.game.step()
                     self.last_step = monotonic()

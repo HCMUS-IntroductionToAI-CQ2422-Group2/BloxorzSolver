@@ -44,6 +44,113 @@ def test_modal_blocks_movement(app):
     assert app.panel is None
 
 
+@pytest.mark.parametrize("key_name,screen_direction", (
+    ("K_UP", (-1, -1)), ("K_w", (-1, -1)),
+    ("K_DOWN", (1, 1)), ("K_s", (1, 1)),
+    ("K_LEFT", (-1, 1)), ("K_a", (-1, 1)),
+    ("K_RIGHT", (1, -1)), ("K_d", (1, -1)),
+))
+@pytest.mark.parametrize("pose", ("standing", "horizontal", "vertical", "split0", "split1"))
+def test_keys_follow_visible_board_edges(app, monkeypatch, key_name, screen_direction, pose):
+    import pygame
+    from BackEnd.logic.board import Board
+    from BackEnd.logic.game_rules import GameRules
+    from BackEnd.objects.blocks import BlockState, GameState, Orientation
+    from BackEnd.objects.tiles import FloorTile
+
+    board = Board()
+    for x in range(12):
+        for y in range(12):
+            board.add_tile(FloorTile(x, y))
+    blocks = {
+        "standing": BlockState(((4, 4),), Orientation.STANDING),
+        "horizontal": BlockState(((4, 4), (5, 4)), Orientation.HORIZONTAL),
+        "vertical": BlockState(((4, 4), (4, 5)), Orientation.VERTICAL),
+        "split0": BlockState.split(((4, 4), (8, 8)), 0),
+        "split1": BlockState.split(((4, 4), (8, 8)), 1),
+    }
+    before = blocks[pose]
+    board.add_game_state(GameState(before))
+    app.game.board = board
+    app.game.rules = GameRules(board)
+    projections = []
+    monkeypatch.setattr("FrontEnd.renderer.draw_wood",
+                        lambda surface, state, project, scale, animation: projections.append(project))
+    app.draw()
+    project = projections[0]
+
+    def ground_centre(block):
+        positions = (block.positions[block.active_cube],) if block.is_split() else block.positions
+        return project(*(sum(p[i] + .5 for p in positions) / len(positions) for i in (0, 1)))
+
+    app.event(pygame.event.Event(pygame.KEYDOWN, key=getattr(pygame, key_name)))
+    assert app.game.status == "playing"
+    assert len(app.game.history) == 1
+    start, end = ground_centre(before), ground_centre(app.game.state.block)
+    assert all((end[i] - start[i]) * screen_direction[i] > 0 for i in (0, 1))
+    if before.is_split():
+        stationary = before.positions[1 - before.active_cube]
+        assert stationary in app.game.state.block.positions
+
+
+def test_fast_keys_keep_one_waiting_turn(app, monkeypatch):
+    import pygame
+    from BackEnd.objects.sharing import Move
+
+    now = [100.0]
+    monkeypatch.setattr("FrontEnd.app.monotonic", lambda: now[0])
+    app.event(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_DOWN))
+    now[0] += .1
+    app.event(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_LEFT))
+    app.event(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_DOWN))
+    assert app.game.state.block.positions == ((5, 6), (6, 6))
+    assert app.pending_action == Move.DOWN
+    app.process_pending_move()
+    assert len(app.game.history) == 1
+    now[0] += .2
+    app.process_pending_move()
+    assert app.game.state.block.positions == ((5, 7), (6, 7))
+    assert [action for _, action in app.game.history] == [Move.RIGHT, Move.DOWN]
+    assert app.pending_action is None
+    now[0] += .3
+    app.process_pending_move()
+    assert len(app.game.history) == 2
+
+
+def test_waiting_turn_runs_before_new_key_after_animation(app, monkeypatch):
+    import pygame
+    from BackEnd.objects.sharing import Move
+
+    now = [100.0]
+    monkeypatch.setattr("FrontEnd.app.monotonic", lambda: now[0])
+    app.event(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_DOWN))
+    app.event(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_LEFT))
+    now[0] += .3
+    app.event(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_DOWN))
+    assert [action for _, action in app.game.history] == [Move.RIGHT, Move.DOWN]
+    assert app.pending_action == Move.RIGHT
+
+
+@pytest.mark.parametrize("interrupt", ("menu", "restart", "loss"))
+def test_waiting_input_does_not_survive_interrupt(app, interrupt):
+    from BackEnd.objects.sharing import Move
+
+    app.animate_move(Move.RIGHT)
+    app.animate_move(Move.DOWN)
+    assert app.pending_action == Move.DOWN
+    if interrupt == "menu":
+        app.toggle_panel("menu")
+    elif interrupt == "restart":
+        app.load_level("map01")
+    else:
+        app.game.status = "lost"
+    before = app.game.state
+    app.animation = None
+    app.process_pending_move()
+    assert app.pending_action is None
+    assert app.game.state == before
+
+
 def test_animation_input_lock_reset_and_terminal_frames(app):
     from BackEnd.objects.sharing import Move
     from time import monotonic
