@@ -1,0 +1,378 @@
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesPackage{fit_hcmus}[2026/10/04 v1.1 FIT-HCMUS Student Report & Assignment Template (pdfLaTeX)]
+
+% ==============================================================================
+% 1. CÁC GÓI CƠ BẢN VÀ THIẾT LẬP HỆ THỐNG (PDFLATEX, GEOMETRY, TIẾNG VIỆT)
+% ==============================================================================
+% pdfLaTeX uses 8-bit T5 Vietnamese fonts instead of system OpenType fonts.
+\RequirePackage{iftex}
+\ifPDFTeX
+    \RequirePackage[utf8,nocaptions]{vntex}
+    \RequirePackage{mathptmx}
+    \RequirePackage{courier}
+\else
+    \PackageError{fit_hcmus}{This template requires pdfLaTeX}{Select PDFLaTeX as the compiler in Prism.}
+\fi
+
+% Lề trang theo quy chuẩn ĐHQG-HCM: Trái 30mm, Phải 20mm, Trên 20mm, Dưới 20mm
+\RequirePackage[a4paper, left=30mm, right=20mm, top=20mm, bottom=20mm]{geometry}
+
+% Dãn dòng 1.35 (tương đương chuẩn 1.3 - 1.5 của ĐHQG-HCM)
+\RequirePackage{setspace}
+\setstretch{1.35}
+
+% Khoảng cách đoạn văn và thụt đầu dòng
+\setlength{\parskip}{6pt}
+\setlength{\parindent}{1.27cm} % Thụt đầu dòng 1 tab chuẩn (1.27 cm)
+
+% Màu sắc và đồ họa
+\RequirePackage{xcolor}
+\RequirePackage{graphicx}
+\RequirePackage{tikz}
+\RequirePackage{tabularx}
+\RequirePackage{booktabs}
+\RequirePackage{multirow}
+\RequirePackage{lastpage}
+\RequirePackage{fancyhdr}
+\RequirePackage{titlesec}
+\RequirePackage{caption}
+\RequirePackage{hyperref}
+\RequirePackage{tcolorbox}
+\tcbuselibrary{skins,breakable}
+\RequirePackage{listings}
+\RequirePackage{algorithm}
+\RequirePackage{algpseudocode}
+\RequirePackage{amsmath,amssymb}
+
+% ==============================================================================
+% 2. ĐỊNH NGHĨA MÀU SẮC CHUẨN NHẬN DIỆN THƯƠNG HIỆU FIT-HCMUS
+% ==============================================================================
+\definecolor{HCMUSBlue}{HTML}{003366}       % Xanh ĐHKHTN đậm
+\definecolor{FITBlue}{HTML}{005CA9}         % Xanh FIT tươi
+\definecolor{DarkNavy}{HTML}{1A2B4C}        % Màu chữ tiêu đề
+\definecolor{LightBlueBg}{HTML}{F0F5FA}     % Nền hộp Callout Note
+\definecolor{BorderBlue}{HTML}{B0C7DE}      % Viền hộp Note
+\definecolor{LightGreenBg}{HTML}{F2F9F4}    % Nền hộp Callout Tip
+\definecolor{BorderGreen}{HTML}{4CAF50}     % Viền hộp Tip
+\definecolor{LightOrangeBg}{HTML}{FFF9F2}   % Nền hộp Callout Warning
+\definecolor{BorderOrange}{HTML}{FF9800}    % Viền hộp Warning
+\definecolor{CodeBg}{HTML}{F6F8FA}          % Nền code
+\definecolor{CodeBorder}{HTML}{D0D7DE}      % Viền code
+\definecolor{CodeGreen}{HTML}{22863A}       % Màu comment code
+\definecolor{CodeBlue}{HTML}{005CC5}        % Màu từ khóa code
+\definecolor{CodePurple}{HTML}{6F42C1}      % Màu hàm số code
+\definecolor{CodeRed}{HTML}{D73A49}         % Màu chuỗi code
+
+% ==============================================================================
+% 3. CẤU HÌNH LIÊN KẾT (HYPERREF)
+% ==============================================================================
+\hypersetup{
+    colorlinks=true,
+    linkcolor=HCMUSBlue,
+    citecolor=FITBlue,
+    urlcolor=FITBlue,
+    bookmarksnumbered=true
+}
+
+% ==============================================================================
+% 4. CẤU HÌNH TIÊU ĐỀ MỤC (TITLESEC)
+% ==============================================================================
+\titleformat{\section}
+    {\fontsize{15pt}{18pt}\bfseries\color{HCMUSBlue}}
+    {\thesection.}{0.8em}{}
+    [\vspace{-6pt}\rule{\textwidth}{0.8pt}]
+
+\titleformat{\subsection}
+    {\fontsize{13.5pt}{16pt}\bfseries\color{DarkNavy}}
+    {\thesubsection.}{0.6em}{}
+
+\titleformat{\subsubsection}
+    {\fontsize{13pt}{15pt}\bfseries\itshape\color{DarkNavy}}
+    {\thesubsubsection.}{0.5em}{}
+
+\titlespacing*{\section}{0pt}{14pt}{6pt}
+\titlespacing*{\subsection}{0pt}{10pt}{4pt}
+\titlespacing*{\subsubsection}{0pt}{8pt}{3pt}
+
+% ==============================================================================
+% 5. CẤU HÌNH CAPTION CHO HÌNH ẢNH VÀ BẢNG BIỂU
+% ==============================================================================
+\captionsetup{
+    font={small,stretch=1.2},
+    labelfont={bf,color=HCMUSBlue},
+    labelsep=colon,
+    skip=6pt
+}
+\captionsetup[table]{position=above,skip=4pt}
+\captionsetup[figure]{position=below,skip=6pt}
+
+\renewcommand{\figurename}{Hình}
+\renewcommand{\tablename}{Bảng}
+\renewcommand{\contentsname}{Nội dung}
+\renewcommand{\listfigurename}{Danh mục hình ảnh}
+\renewcommand{\listtablename}{Danh mục bảng biểu}
+\renewcommand{\refname}{Tài liệu tham khảo}
+
+\AtBeginDocument{
+    \renewcommand{\contentsname}{Nội dung}
+    \renewcommand{\listfigurename}{Danh mục hình ảnh}
+    \renewcommand{\listtablename}{Danh mục bảng biểu}
+    \renewcommand{\refname}{Tài liệu tham khảo}
+}
+
+% ==============================================================================
+% 6. CẤU HÌNH HEADER VÀ FOOTER (FANCYHDR) - CHỐNG ĐÈ CHỮ HOÀN TOÀN
+% ==============================================================================
+\setlength{\headheight}{26pt}
+\setlength{\headsep}{16pt}
+
+\fancypagestyle{fancy}{
+    \fancyhf{}
+    \renewcommand{\headrulewidth}{0.6pt}
+    \renewcommand{\footrulewidth}{0.5pt}
+    
+    % Header phân tách theo 2 parbox cố định độ rộng, không bao giờ bị đè chữ
+    \fancyhead[L]{%
+        \parbox[b]{0.65\textwidth}{%
+            \raggedright\small\color{DarkNavy}\textbf{\@courseid: \@coursename}%
+        }%
+    }
+    \fancyhead[R]{%
+        \parbox[b]{0.32\textwidth}{%
+            \raggedleft\small\color{HCMUSBlue}\textbf{Khoa CNTT -- ĐHKHTN}%
+        }%
+    }
+    
+    % Footer phân tách theo 2 parbox cố định độ rộng
+    \fancyfoot[L]{%
+        \parbox[t]{0.65\textwidth}{%
+            \raggedright\small\color{gray}\textit{\@reportsubtitle}%
+        }%
+    }
+    \fancyfoot[R]{%
+        \parbox[t]{0.32\textwidth}{%
+            \raggedleft\small\color{DarkNavy}\textbf{Trang \thepage/\pageref{LastPage}}%
+        }%
+    }
+}
+
+\fancypagestyle{plain}{
+    \fancyhf{}
+    \renewcommand{\headrulewidth}{0pt}
+    \renewcommand{\footrulewidth}{0pt}
+    \fancyfoot[R]{%
+        \small\color{DarkNavy}\textbf{Trang \thepage}%
+    }
+}
+
+\pagestyle{fancy}
+
+% ==============================================================================
+% 7. CẤU HÌNH HIỂN THỊ MÃ NGUỒN (LISTINGS) VỚI CONSOLAS
+% ==============================================================================
+\lstset{
+    backgroundcolor=\color{CodeBg},
+    basicstyle=\ttfamily\fontsize{10.5pt}{13pt}\selectfont,
+    breaklines=true,
+    breakatwhitespace=false,
+    captionpos=b,
+    commentstyle=\color{CodeGreen}\itshape,
+    keywordstyle=\color{CodeBlue}\bfseries,
+    stringstyle=\color{CodeRed},
+    numberstyle=\tiny\color{gray},
+    numbers=left,
+    numbersep=8pt,
+    showstringspaces=false,
+    showspaces=false,
+    showtabs=false,
+    tabsize=4,
+    frame=single,
+    rulecolor=\color{CodeBorder},
+    framesep=4pt,
+    xleftmargin=15pt,
+    framexleftmargin=15pt,
+    keepspaces=true
+}
+
+% ==============================================================================
+% 8. CẤU HÌNH MÃ GIẢ / THUẬT TOÁN (ALGORITHMICX) VIỆT HÓA
+% ==============================================================================
+\floatname{algorithm}{Thuật toán}
+\renewcommand{\algorithmicrequire}{\textbf{Đầu vào:}}
+\renewcommand{\algorithmicensure}{\textbf{Đầu ra:}}
+
+% ==============================================================================
+% 9. HỘP CHÚ THÍCH (CALLOUT BOXES: NOTE, TIP, WARNING)
+% ==============================================================================
+\newtcolorbox{calloutnote}[1][Ghi chú]{
+    enhanced,
+    breakable,
+    colback=LightBlueBg,
+    colframe=FITBlue,
+    coltitle=HCMUSBlue,
+    fonttitle=\bfseries\fontsize{11.5pt}{14pt}\selectfont,
+    title={#1},
+    arc=3pt,
+    boxrule=1.2pt,
+    leftrule=4pt,
+    top=4pt,
+    bottom=4pt,
+    left=8pt,
+    right=8pt
+}
+
+\newtcolorbox{callouttip}[1][Mẹo hay]{
+    enhanced,
+    breakable,
+    colback=LightGreenBg,
+    colframe=BorderGreen,
+    coltitle=BorderGreen!80!black,
+    fonttitle=\bfseries\fontsize{11.5pt}{14pt}\selectfont,
+    title={#1},
+    arc=3pt,
+    boxrule=1.2pt,
+    leftrule=4pt,
+    top=4pt,
+    bottom=4pt,
+    left=8pt,
+    right=8pt
+}
+
+\newtcolorbox{calloutwarning}[1][Cảnh báo / Lưu ý quan trọng]{
+    enhanced,
+    breakable,
+    colback=LightOrangeBg,
+    colframe=BorderOrange,
+    coltitle=BorderOrange!80!black,
+    fonttitle=\bfseries\fontsize{11.5pt}{14pt}\selectfont,
+    title={#1},
+    arc=3pt,
+    boxrule=1.2pt,
+    leftrule=4pt,
+    top=4pt,
+    bottom=4pt,
+    left=8pt,
+    right=8pt
+}
+
+% ==============================================================================
+% 10. KHAI BÁO CÁC BIẾN THÔNG TIN ĐỒ ÁN / BÀI TẬP
+% ==============================================================================
+\newcommand{\courseid}[1]{\def\@courseid{#1}}
+\newcommand{\coursename}[1]{\def\@coursename{#1}}
+\newcommand{\reportsubtitle}[1]{\def\@reportsubtitle{#1}}
+\newcommand{\instructor}[1]{\def\@instructor{#1}}
+\newcommand{\academicyear}[1]{\def\@academicyear{#1}}
+\newcommand{\semester}[1]{\def\@semester{#1}}
+\newcommand{\classid}[1]{\def\@classid{#1}}
+
+% Thiết lập mặc định
+\courseid{CSC10001}
+\coursename{TÊN MÔN HỌC}
+\reportsubtitle{BÁO CÁO ĐỒ ÁN MÔN HỌC}
+\instructor{TS. Giảng Viên Hướng Dẫn}
+\academicyear{2026 - 2027}
+\semester{Học kỳ II}
+\classid{21CNTN / 21CLC}
+
+% ==============================================================================
+% 11. TRANG BÌA HIỆN ĐẠI DÀNH CHO BÁO CÁO ĐỒ ÁN (PROJECT COVER PAGE)
+% ==============================================================================
+\newcommand{\makecoverpage}{
+    \begin{titlepage}
+        \thispagestyle{empty}
+        \begin{center}
+            % Header cơ quan
+            {\fontsize{13pt}{16pt}\selectfont \textbf{ĐẠI HỌC QUỐC GIA THÀNH PHỐ HỒ CHÍ MINH}}\\[4pt]
+            {\fontsize{14pt}{17pt}\selectfont \textbf{\color{HCMUSBlue}TRƯỜNG ĐẠI HỌC KHOA HỌC TỰ NHIÊN}}\\[4pt]
+            {\fontsize{13pt}{16pt}\selectfont \textbf{\color{FITBlue}KHOA CÔNG NGHỆ THÔNG TIN}}\\[8pt]
+            
+            % Đường line phân cách hiện đại
+            {\color{FITBlue}\rule{0.65\textwidth}{1.5pt}}\\[18pt]
+
+            % Biểu trưng Trường ĐH Khoa học Tự nhiên
+            \vspace{5pt}
+            {\centering\includegraphics[height=3.6cm]{figures/hcmus_logo.png}\par}
+            \vspace{18pt}
+
+            % Thông tin môn học & Loại báo cáo
+            {\fontsize{13pt}{16pt}\selectfont \textbf{MÔN HỌC: \@courseid\ - \@coursename}}\\[6pt]
+            {\fontsize{14pt}{18pt}\selectfont \textbf{\color{DarkNavy}\@reportsubtitle}}\\[20pt]
+
+            % Tên đề tài lớn
+            \begin{tcolorbox}[
+                colback=white,
+                colframe=HCMUSBlue,
+                arc=4pt,
+                boxrule=1.5pt,
+                width=\textwidth,
+                halign=center,
+                top=12pt,
+                bottom=12pt
+            ]
+                {\fontsize{18pt}{24pt}\bfseries\color{HCMUSBlue} \@title}
+            \end{tcolorbox}
+            \vspace{25pt}
+
+            % Khung thông tin Giảng viên & Sinh viên
+            \begin{flushleft}
+            \hspace*{1.0cm}
+            \begin{tabular}{ll}
+                \textbf{\fontsize{13pt}{16pt}\selectfont Giảng viên hướng dẫn:} & \fontsize{13pt}{16pt}\selectfont \@instructor \\[6pt]
+                \textbf{\fontsize{13pt}{16pt}\selectfont Lớp:} & \fontsize{13pt}{16pt}\selectfont \@classid \\[6pt]
+                \textbf{\fontsize{13pt}{16pt}\selectfont Năm học:} & \fontsize{13pt}{16pt}\selectfont \@academicyear \\[6pt]
+                \textbf{\fontsize{13pt}{16pt}\selectfont Sinh viên thực hiện:} & \\[4pt]
+                \multicolumn{2}{l}{
+                    \hspace*{0.5cm}
+                    \begin{minipage}{0.85\textwidth}
+                        \@author
+                    \end{minipage}
+                }
+            \end{tabular}
+            \end{flushleft}
+            
+        \end{center}
+    \end{titlepage}
+}
+
+% ==============================================================================
+% 12. KHỐI HEADER BÀI TẬP CÁ NHÂN / LAB NGẮN GỌN (SHORT ASSIGNMENT HEADER)
+% ==============================================================================
+\newcommand{\makeassignmentheader}{
+    \thispagestyle{plain}
+    \noindent
+    \begin{minipage}[c]{0.18\textwidth}
+        \includegraphics[width=\linewidth]{figures/hcmus_logo.png}
+    \end{minipage}
+    \hfill
+    \begin{minipage}[c]{0.78\textwidth}
+        {\fontsize{11pt}{13pt}\selectfont \textbf{TRƯỜNG ĐẠI HỌC KHOA HỌC TỰ NHIÊN - ĐHQG TP.HCM}}\\[2pt]
+        {\fontsize{11pt}{13pt}\selectfont \textbf{\color{FITBlue}KHOA CÔNG NGHỆ THÔNG TIN}}\\[2pt]
+        {\fontsize{10pt}{12pt}\selectfont Môn học: \textbf{\@courseid\ - \@coursename}}\\[2pt]
+        {\fontsize{10pt}{12pt}\selectfont Giảng viên: \textbf{\@instructor}\ \textbar\ Lớp: \textbf{\@classid}}
+    \end{minipage}
+    
+    \vspace{4pt}
+    \noindent{\color{HCMUSBlue}\rule{\textwidth}{1.2pt}}
+    \vspace{8pt}
+
+    \begin{center}
+        {\fontsize{16pt}{20pt}\bfseries\color{HCMUSBlue} \@title}\\[3pt]
+        {\fontsize{12pt}{15pt}\selectfont \textit{\@reportsubtitle}}\\[6pt]
+        \begin{tcolorbox}[
+            colback=CodeBg,
+            colframe=CodeBorder,
+            arc=2pt,
+            boxrule=0.6pt,
+            width=\textwidth,
+            halign=center,
+            top=3pt,
+            bottom=3pt
+        ]
+            {\small \textbf{Họ và tên sinh viên:} \@author \quad \textbar \quad \textbf{Năm học:} \@academicyear}
+        \end{tcolorbox}
+    \end{center}
+    \vspace{10pt}
+}
+
+\endinput
