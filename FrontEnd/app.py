@@ -1,3 +1,4 @@
+from FrontEnd.fall_motion import prepare_fall
 """Responsive desktop GUI with cancellable process-isolated search."""
 import argparse
 import math
@@ -274,6 +275,9 @@ class App:
                           "action": action, "status": self.game.status,
                           "start": monotonic(),
                           "duration": .28 if self.game.status == "playing" else LOSS_ANIMATION_SECONDS}
+
+        if self.game.status == "lost":
+            self.animation["fall_plan"] = prepare_fall(self.game.rules, before, action)
 
     def process_pending_move(self):
         if self.pending_action is None:

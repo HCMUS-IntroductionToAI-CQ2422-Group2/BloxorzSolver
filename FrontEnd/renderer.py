@@ -76,8 +76,15 @@ class Renderer:
                     pygame.draw.line(surface, "#b77b45", point(x+w*t,y+d,z+.08), point(x+w*t,y+d,z+height-.06), 1)
                 for edge in ((1,2),(2,3)):
                     pygame.draw.line(surface, "#e1ad6b", top[edge[0]], top[edge[1]], 2)
+        loss = animation and animation.get('fall_plan') and monotonic() - animation['start'] >= .28
+        if loss:
+            draw_wood(surface, state, block_point, scale, animation, layer='below')
         bridge_state = animation["before"] if animation and monotonic() - animation["start"] < .28 else state
+        if loss:
+            bridge_state = animation['fall_plan']['state']
         for x,y in sorted(positions,key=lambda p:sum(p)):
+            if loss and (x,y) in animation['fall_plan']['broken']:
+                continue
             tile=board.get_tile((x,y))
             if isinstance(tile,Bridge) and not tile.is_open(bridge_state):
                 continue
@@ -111,7 +118,10 @@ class Renderer:
                     gap=radius*.42
                     pygame.draw.circle(surface,text_color,(center[0]-gap,center[1]),radius*.32)
                     pygame.draw.circle(surface,text_color,(center[0]+gap,center[1]),radius*.32)
-        draw_wood(surface, state, block_point, scale, animation)
+        if loss:
+            draw_wood(surface, state, block_point, scale, animation, layer='above')
+        else:
+            draw_wood(surface, state, block_point, scale, animation)
 
     def legend(self, surface, x, y):
         items = [("#8799b2", "Floor"), ("#eeaa65", "Fragile"),

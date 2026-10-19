@@ -1,20 +1,21 @@
 import math
 from time import monotonic
 import pygame
+from FrontEnd.fall_motion import fall_vertex
 
 
-def clip_floor(vertices):
+def clip_floor(vertices, side=1):
     result = []
     for a, b in zip(vertices, vertices[1:] + vertices[:1]):
-        if a[2] >= 0:
+        if side*a[2] >= 0:
             result.append(a)
-        if (a[2] >= 0) != (b[2] >= 0):
+        if (side*a[2] >= 0) != (side*b[2] >= 0):
             t = a[2] / (a[2] - b[2])
             result.append(tuple(a[i] + t * (b[i] - a[i]) for i in range(3)))
     return result
 
 
-def draw_wood(surface, state, project, scale, animation):
+def draw_wood(surface, state, project, scale, animation, layer=None):
     elapsed = monotonic() - animation['start'] if animation else 0
     rolling = animation is not None and elapsed < .28
     terminal = animation and animation['status'] in ('won', 'lost')
@@ -22,21 +23,17 @@ def draw_wood(surface, state, project, scale, animation):
     fall = max(0, (elapsed - .28) / .82) if terminal else 0
     if terminal and fall >= 1:
         return
-    block = animation['before'].block if rolling or lost else state.block
+    plan = animation.get('fall_plan') if animation else None
+    block = animation['before'].block if rolling else plan['state'].block if lost and plan else state.block
     direction = animation['action'].value if animation else ''
     dx = {'left': -1, 'right': 1}.get(direction, 0)
     dy = {'up': -1, 'down': 1}.get(direction, 0)
-    rotate = rolling or lost
+    rotate = rolling
     t = min(1, elapsed / .28) if animation else 0
     angle = (t*t*(3-2*t)) * math.pi/2
-    if lost:
-        # Keep tipping past the initial 90 degrees while falling, instead of freezing on edge.
-        angle += fall * math.pi * .95
-    drop = (11 * fall**2.2) if lost else (5 * fall * fall) if terminal else 0
-    # Fade and shrink only the falling-off-the-board case, to read as vanishing away rather
-    # than sinking flat in place; the goal-hole sink (won) keeps its original clip behaviour.
-    fade = max(0, min(1, (fall - .45) / .55)) if lost else 0
-    shrink = 1 - .35 * fall if lost else 1
+    drop = 5 * fall * fall if terminal and not lost else 0
+    fade = max(0, min(1, (fall - .75) / .25)) if lost else 0
+    shrink = 1
     cubes = [(p[0],p[1],1,1,1,i) for i,p in enumerate(block.positions)] if block.is_split() else [
         (min(p[0] for p in block.positions), min(p[1] for p in block.positions),
          max(p[0] for p in block.positions)-min(p[0] for p in block.positions)+1,
@@ -54,7 +51,11 @@ def draw_wood(surface, state, project, scale, animation):
                 z=-sign*q*math.sin(angle)+z*math.cos(angle)
                 if dx: a=horizontal
                 else: b=horizontal
-            if terminal: z-=drop
+            if lost and not rolling and plan:
+                # A resting split cube must not fall with the unsupported cube.
+                if not block.is_split() or (x, y) not in plan['supported']:
+                    return fall_vertex((a,b,z), plan, elapsed - .28)
+            if terminal and not lost: z-=drop
             return (a,b,z)
         inset=.035
         vertices=[transform((a,b,z)) for z in (inset,h-inset)
@@ -68,7 +69,8 @@ def draw_wood(surface, state, project, scale, animation):
         shadow_fall = fall*1.7 if lost else fall
         for spread,alpha in ((14,12),(8,20),(2,38)):
             pygame.draw.ellipse(shadow,(4,12,16,int(alpha*max(0,1-shadow_fall))),bounds.inflate(spread,spread))
-        surface.blit(shadow,(0,0))
+        if layer != "below":
+            surface.blit(shadow,(0,0))
         faces=[(0,3,2,1),(0,1,5,4),(3,7,6,2),(0,4,7,3),(1,2,6,5),(4,5,6,7)]
         visible=[]
         for face in faces:
@@ -93,7 +95,9 @@ def draw_wood(surface, state, project, scale, animation):
         if lost and fade > 0:
             target_surface = pygame.Surface(surface.get_size(), pygame.SRCALPHA)
         for _,polygon,color in sorted(visible):
-            clipped=clip_floor(polygon) if terminal and animation['status']=='won' else polygon
+            clip_side = -1 if layer == 'below' else 1
+            clipping = layer is not None or (terminal and animation['status']=='won')
+            clipped = clip_floor(polygon, clip_side) if clipping else polygon
             if len(clipped)<3: continue
             pixels=[to_pixel(v) for v in clipped]
             pygame.draw.polygon(target_surface,color,pixels)
@@ -106,12 +110,29 @@ def draw_wood(surface, state, project, scale, animation):
                     t=step/16
                     grain=f+.009*math.sin(t*16+line*1.8)
                     v=tuple((a[i]*(1-t)+d[i]*t)*(1-grain)+(b[i]*(1-t)+c[i]*t)*grain for i in range(3))
-                    if terminal and animation['status']=='won' and v[2]<0:
+                    if clipping and clip_side*v[2]<0:
                         if len(points)>1: pygame.draw.lines(target_surface,tuple(max(0,c-24) for c in color),False,points,1)
                         points=[]
                     else: points.append(to_pixel(v))
                 if len(points)>1: pygame.draw.lines(target_surface,tuple(max(0,c-24) for c in color),False,points,1)
-            pygame.draw.lines(target_surface,tuple(min(255,c+27) for c in color),True,pixels,1)
+            edge_color = tuple(min(255,c+27) for c in color)
+            if clipping:
+                # Only outline physical edges; the occlusion plane is not a cut
+                # in the timber and must not draw a bright seam across its face.
+                for a, b in zip(polygon, polygon[1:] + polygon[:1]):
+                    a_visible, b_visible = clip_side*a[2] >= 0, clip_side*b[2] >= 0
+                    if not a_visible and not b_visible:
+                        continue
+                    if a_visible != b_visible:
+                        t = a[2] / (a[2] - b[2])
+                        crossing = tuple(a[i] + t*(b[i]-a[i]) for i in range(3))
+                        if a_visible:
+                            b = crossing
+                        else:
+                            a = crossing
+                    pygame.draw.line(target_surface, edge_color, to_pixel(a), to_pixel(b), 1)
+            else:
+                pygame.draw.lines(target_surface, edge_color, True, pixels, 1)
         if target_surface is not surface:
             target_surface.set_alpha(int(255*(1-fade)))
             surface.blit(target_surface,(0,0))
