@@ -2,29 +2,73 @@ from BackEnd.Solver.BaseSolver import BaseSolver
 from BackEnd.objects.sharing import Move
 from BackEnd.Solver.SearchNode import SearchNode
 from BackEnd.logic.game_rules import GameRules
-from BackEnd.objects.blocks import GameState
+from BackEnd.objects.blocks import BlockState, GameState, Orientation
 from BackEnd.logic.board import Board
+from BackEnd.objects.switchs import Switch
+from BackEnd.objects.tiles import Goal
+from collections import defaultdict, deque
+from dataclasses import replace
+from itertools import combinations
 import math
 from queue import PriorityQueue
 
 class AStarSolver(BaseSolver): 
     def __init__(self, rules):
         super().__init__(rules)
+        self.heuristic_table = self._build_heuristic_table()
         
     def _heuristic_function(self, state: GameState):
-        if not state.block.is_split(): 
-            x_block, y_block = state.block.positions[0]
+        return self.heuristic_table.get(state.block, math.inf)
 
-            return math.sqrt((self.x_goal-x_block)*(self.x_goal-x_block) + (self.y_goal-y_block)*(self.y_goal-y_block))
+    def _build_heuristic_table(self):
+        relaxed_board = Board()
+        for tile in self.rules.board.tile:
+            relaxed_board.add_tile(replace(tile, effects=()) if isinstance(tile, Switch) else tile)
+        for bridge in self.rules.board.bridge:
+            relaxed_board.add_bridge(bridge)
 
-        else: 
-            x_block1, y_block1 = state.block.positions[0]
-            x_block2, y_block2 = state.block.positions[1] 
+        rules = GameRules(relaxed_board)
+        open_bridges = frozenset(bridge.bridge_id for bridge in relaxed_board.bridge)
+        positions = sorted({
+            position
+            for tile in [*relaxed_board.tile, *relaxed_board.bridge]
+            for position in tile.get_positions()
+        })
+        position_set = set(positions)
+        blocks = []
+        for x, y in positions:
+            blocks.append(BlockState(((x, y),), Orientation.STANDING))
+            if (x + 1, y) in position_set:
+                blocks.append(BlockState(((x, y), (x + 1, y)), Orientation.HORIZONTAL))
+            if (x, y + 1) in position_set:
+                blocks.append(BlockState(((x, y), (x, y + 1)), Orientation.VERTICAL))
 
-            distance1 = math.sqrt((self.x_goal-x_block1)*(self.x_goal-x_block1) + (self.y_goal-y_block1)*(self.y_goal-y_block1))
-            distance2 = math.sqrt((self.x_goal-x_block2)*(self.x_goal-x_block2) + (self.y_goal-y_block2)*(self.y_goal-y_block2))
+        for first, second in combinations(positions, 2):
+            for active_cube in (0, 1):
+                blocks.append(BlockState.split((first, second), active_cube))
 
-            return min(distance1, distance2)
+        predecessors = defaultdict(list)
+        distance = {}
+        queue = deque()
+        for block in blocks:
+            state = GameState(block, open_bridges)
+            if not rules.is_valid(state):
+                continue
+            if block.is_standing() and isinstance(relaxed_board.get_tile(block.positions[0]), Goal):
+                distance[block] = 0
+                queue.append(block)
+            for action in Move:
+                next_state = rules.apply_action(state, action)
+                if next_state is not None:
+                    predecessors[next_state.block].append(block)
+
+        while queue:
+            block = queue.popleft()
+            for previous in predecessors[block]:
+                if previous not in distance:
+                    distance[previous] = distance[block] + 1
+                    queue.append(previous)
+        return distance
 
 
     def solve(self, initial_state):
