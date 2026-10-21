@@ -1,6 +1,7 @@
 """Replay A* solutions on existing maps with different game mechanics."""
 
 import pytest
+from collections import deque
 
 from BackEnd.init_map import init_map
 from BackEnd.logic.game_rules import GameRules
@@ -41,3 +42,38 @@ def test_astar_solves_existing_map(map_id, expect_split, expect_bridge_change):
     assert rules.is_goal(state), map_id
     assert saw_split == expect_split
     assert saw_bridge_change == expect_bridge_change
+
+
+@pytest.mark.parametrize('map_id', ['map01', 'map02', 'map04', 'map08', 'map09'])
+def test_astar_heuristic_and_shortest_path_match_bfs(map_id):
+    board = init_map(map_id)
+    rules = GameRules(board)
+    initial = board.game_state
+    solver = AStarSolver(rules)
+    queue = deque([(initial, 0)])
+    visited = {initial}
+
+    while queue:
+        state, cost = queue.popleft()
+        if rules.is_goal(state):
+            shortest_cost = cost
+            break
+        for action in Move:
+            next_state = rules.apply_action(state, action)
+            if next_state is None:
+                continue
+            assert solver._heuristic_function(state) <= 1 + solver._heuristic_function(next_state)
+            if next_state not in visited:
+                visited.add(next_state)
+                queue.append((next_state, cost + 1))
+    else:
+        pytest.fail(f'{map_id}: BFS found no solution')
+
+    actions = solver.solve(initial)
+    assert actions is not None
+    assert len(actions) == shortest_cost
+    state = initial
+    for step, action in enumerate(actions):
+        assert solver._heuristic_function(state) <= shortest_cost - step
+        state = rules.apply_action(state, action)
+    assert solver._heuristic_function(state) == 0
