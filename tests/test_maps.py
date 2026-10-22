@@ -8,6 +8,10 @@ import pytest
 from BackEnd.logic.game_rules import GameRules
 from BackEnd.init_map import init_map
 from BackEnd.objects.sharing import Move
+from BackEnd.Solver.BFSSolver import BFSSolver
+
+
+NEW_MAPS = [f'map{index:02}' for index in range(21, 36)]
 
 
 MAPS_PATH = Path(__file__).resolve().parents[1] / 'BackEnd/maps/maps.json'
@@ -43,8 +47,8 @@ def maps():
     return json.loads(MAPS_PATH.read_text(encoding='utf-8'))
 
 
-def test_twenty_original_levels_in_order(maps):
-    assert list(maps) == [f'map{index:02}' for index in range(1, 21)]
+def test_thirty_five_levels_in_order(maps):
+    assert list(maps) == [f'map{index:02}' for index in range(1, 36)]
     for index, data in enumerate(maps.values(), 1):
         assert data['name'] == f'Level {index:02}'
 
@@ -81,6 +85,35 @@ def test_map_objects_and_solution(maps, map_id):
         state = rules.apply_action(state, moves[symbol])
         assert state is not None, (map_id, step, symbol)
     assert rules.is_goal(state), map_id
+    assert board.game_state is initial
+
+
+@pytest.mark.parametrize('map_id', NEW_MAPS)
+def test_new_map_is_valid_and_solvable(maps, map_id):
+    """map21-35 have no hand-authored move string (SOLUTIONS); verify them
+    structurally and confirm BFS can actually reach the goal instead."""
+    data = maps[map_id]
+    board = init_map(map_id)
+    occupied = set()
+    for tile in board.tile:
+        positions = set(tile.get_positions())
+        assert not occupied.intersection(positions), (map_id, tile)
+        occupied.update(positions)
+    assert len(board.tile) == len(data['floor']) + 1  # floor tiles + the Goal tile
+    assert not data['bridge'] and not data['switch'] and not data['fragile']
+
+    rules = GameRules(board)
+    initial = board.game_state
+    assert rules.is_valid(initial)
+    assert not rules.is_goal(initial)
+
+    solution = BFSSolver(rules).solve(initial)
+    assert solution is not None, f'{map_id} has no BFS solution'
+    state = initial
+    for action in solution:
+        state = rules.apply_action(state, action)
+        assert state is not None
+    assert rules.is_goal(state)
     assert board.game_state is initial
 
 
