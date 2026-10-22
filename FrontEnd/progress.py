@@ -1,7 +1,8 @@
 import json
 from pathlib import Path
 
-TARGETS = {'map01': 7, 'map02': 17, 'map03': 21, 'map04': 28, 'map05': 33, 'map06': 35, 'map07': 44, 'map08': 11, 'map09': 25, 'map10': 58, 'map11': 47, 'map12': 65, 'map13': 46, 'map14': 67, 'map15': 60, 'map16': 29, 'map17': 106, 'map18': 85, 'map19': 67, 'map20': 58}
+TARGETS = {'map01': 7, 'map02': 17, 'map03': 21, 'map04': 28, 'map05': 33, 'map06': 35, 'map07': 44, 'map08': 11, 'map09': 25, 'map10': 58, 'map11': 47, 'map12': 65, 'map13': 46, 'map14': 67, 'map15': 60, 'map16': 29, 'map17': 106, 'map18': 85, 'map19': 67, 'map20': 58,
+           'map21': 7, 'map22': 11, 'map23': 7, 'map24': 18, 'map25': 15, 'map26': 13, 'map27': 28, 'map28': 27, 'map29': 24, 'map30': 19, 'map31': 22, 'map32': 40, 'map33': 29, 'map34': 48, 'map35': 42}
 
 
 def stars_for(level, moves):
