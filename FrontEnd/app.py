@@ -303,7 +303,28 @@ class App:
             shade = pygame.Surface(surface.get_size(), pygame.SRCALPHA)
             shade.fill((3, 12, 19, 185))
             surface.blit(shade, (0, 0))
-            box = pygame.Rect(width//2-270, height//2-250, 540, 500)
+
+            box_height = 500
+            cols, rows, row_pitch, grid_top, button_h, footer_gap, footer_h, caption_gap = (5, 1, 57, 85, 46, 20, 44, 20)
+            if self.panel == "menu":
+                # The stage grid grows with the level count (35 now, more
+                # later), so the panel height and the footer/caption below
+                # it must follow instead of a size tuned for ~20 levels.
+                cols = 5
+                rows = -(-len(self.levels) // cols)
+                caption_h = 20
+                bottom_pad = 30
+                content_height = (grid_top + (rows - 1) * row_pitch + button_h
+                                   + footer_gap + footer_h + caption_gap + caption_h + bottom_pad)
+                max_box_height = height - 80
+                if content_height > max_box_height and rows > 1:
+                    available = max_box_height - (grid_top + button_h + footer_gap
+                                                    + footer_h + caption_gap + caption_h + bottom_pad)
+                    row_pitch = max(40, available / (rows - 1))
+                    content_height = max_box_height
+                box_height = min(content_height, max_box_height)
+
+            box = pygame.Rect(width//2-270, height//2-box_height//2, 540, box_height)
             pygame.draw.rect(surface, PANEL, box, border_radius=24)
             border_color = ACCENT if self.panel == "win" else "#526d75"
             border_width = 3 if self.panel == "win" else 1
@@ -316,12 +337,13 @@ class App:
                 r.text(surface, "Your next adventure", (x, y), 22)
                 r.text(surface, "Choose a stage", (x, y+45), 16, MUTED)
                 for index, level in enumerate(self.levels):
-                    row, col = divmod(index, 5)
+                    row, col = divmod(index, cols)
                     unlocked = self.mode == "solver" or self.progress.unlocked(level)
-                    self.button(str(index+1).zfill(2) if unlocked else "Locked", (x+col*96, y+85+row*57, 86, 46), lambda name=level: self.select_stage(name), selected=level == game.map_name, enabled=unlocked)
-                self.button("Restart stage", (x, y+330, 220, 44), lambda: self.select_stage(game.map_name))
-                self.button("Resume", (x+238, y+330, 236, 44), lambda: self.toggle_panel("menu"))
-                r.text(surface, "O Soft   X Heavy   •• Split   Orange: fragile", (x, y+404), 16, MUTED)
+                    self.button(str(index+1).zfill(2) if unlocked else "Locked", (x+col*96, y+grid_top+row*row_pitch, 86, 46), lambda name=level: self.select_stage(name), selected=level == game.map_name, enabled=unlocked)
+                footer_y = y + grid_top + (rows - 1) * row_pitch + button_h + footer_gap
+                self.button("Restart stage", (x, footer_y, 220, 44), lambda: self.select_stage(game.map_name))
+                self.button("Resume", (x+238, footer_y, 236, 44), lambda: self.toggle_panel("menu"))
+                r.text(surface, "O Soft   X Heavy   •• Split   Orange: fragile", (x, footer_y + footer_h + caption_gap), 16, MUTED)
 
 
         pygame.display.flip()
