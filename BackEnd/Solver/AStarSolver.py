@@ -13,8 +13,8 @@ import math
 from queue import PriorityQueue
 
 class AStarSolver(BaseSolver): 
-    def __init__(self, rules):
-        super().__init__(rules)
+    def __init__(self, rules, benchmark=None):
+        super().__init__(rules, benchmark=benchmark)
         self.heuristic_table = self._build_heuristic_table()
         
     def _heuristic_function(self, state: GameState):
@@ -37,6 +37,7 @@ class AStarSolver(BaseSolver):
         position_set = set(positions)
         blocks = []
         for x, y in positions:
+            self.check_time()
             blocks.append(BlockState(((x, y),), Orientation.STANDING))
             if (x + 1, y) in position_set:
                 blocks.append(BlockState(((x, y), (x + 1, y)), Orientation.HORIZONTAL))
@@ -44,6 +45,7 @@ class AStarSolver(BaseSolver):
                 blocks.append(BlockState(((x, y), (x, y + 1)), Orientation.VERTICAL))
 
         for first, second in combinations(positions, 2):
+            self.check_time()
             for active_cube in (0, 1):
                 blocks.append(BlockState.split((first, second), active_cube))
 
@@ -51,6 +53,7 @@ class AStarSolver(BaseSolver):
         distance = {}
         queue = deque()
         for block in blocks:
+            self.check_time()
             state = GameState(block, open_bridges)
             if not rules.is_valid(state):
                 continue
@@ -63,6 +66,7 @@ class AStarSolver(BaseSolver):
                     predecessors[next_state.block].append(block)
 
         while queue:
+            self.check_time()
             block = queue.popleft()
             for previous in predecessors[block]:
                 if previous not in distance:
@@ -94,11 +98,8 @@ class AStarSolver(BaseSolver):
             if self.rules.is_goal(state_node.state):
                 return self.reconstruct_path(state_node)
 
-            actions = self.rules.get_valid_actions(state=state_node.state)
-
-            for action in actions: 
-                new_state = self.rules.apply_action(state_node.state, action)
-                new_g = state_node.path_cost + 1
+            for action, new_state, cost in self.successors(state_node.state):
+                new_g = state_node.path_cost + cost
                 if new_g >= g_score.get(new_state, math.inf):
                     continue
 

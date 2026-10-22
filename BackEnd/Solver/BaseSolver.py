@@ -8,8 +8,9 @@ from BackEnd.Solver.SearchNode import SearchNode
 
 
 class BaseSolver(ABC):
-    def __init__(self, rules: GameRules):
+    def __init__(self, rules: GameRules, benchmark=None):
         self.rules = rules
+        self.benchmark = benchmark
         for item in self.rules.board.tile:
             if item.type == "Goal": 
                 self.x_goal, self.y_goal = item.x, item.y
@@ -18,6 +19,8 @@ class BaseSolver(ABC):
 
     def successors(self, state: GameState):
         """Sinh các trạng thái kế tiếp hợp lệ."""
+        if self.benchmark is not None:
+            self.benchmark.expand()
         for action in (
             Move.UP,
             Move.DOWN,
@@ -29,6 +32,11 @@ class BaseSolver(ABC):
 
             if next_state is not None:
                 yield action, next_state, 1
+
+    def check_time(self):
+        """Allow preprocessing loops to respect the same search deadline."""
+        if self.benchmark is not None:
+            self.benchmark.check_time()
 
     def reconstruct_path(self, goal_node: SearchNode) -> list[Move]:
         """Truy vết chuỗi hành động từ Initial State đến Goal."""

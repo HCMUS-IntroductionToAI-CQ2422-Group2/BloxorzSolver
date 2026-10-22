@@ -79,7 +79,8 @@ class Renderer:
         loss = animation and animation.get('fall_plan') and monotonic() - animation['start'] >= .28
         if loss:
             draw_wood(surface, state, block_point, scale, animation, layer='below')
-        bridge_state = animation["before"] if animation and monotonic() - animation["start"] < .28 else state
+        roll_seconds = min(.28, animation.get('duration', .28)) if animation else .28
+        bridge_state = animation["before"] if animation and monotonic() - animation["start"] < roll_seconds else state
         if loss:
             bridge_state = animation['fall_plan']['state']
         for x,y in sorted(positions,key=lambda p:sum(p)):
