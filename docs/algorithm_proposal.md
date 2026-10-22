@@ -98,3 +98,31 @@ result = solver.solve(initial_state)
 - BFS/UCS phải cho **cùng độ dài lời giải tối ưu** vì mọi bước có chi phí 1. A* chỉ được khẳng định tối ưu khi heuristic và cách xử lý Frontier bảo đảm tính tối ưu; `h=0` là lựa chọn cơ sở an toàn.
 
 **Kiểm thử:** chạy lại chuỗi `actions` qua `apply_action()` và xác nhận Goal; kiểm tra thêm các màn có cầu/công tắc (`map02`), ô dễ vỡ (`map04`) và tách khối (`map09`).
+
+## 4. UCS – triển khai hiện tại
+
+`BackEnd/Solver/UCSSolver.py` dùng min-heap ưu tiên `SearchNode.path_cost`
+(tương ứng `g_cost` trong đặc tả). `best_cost` lưu chi phí thấp nhất theo toàn bộ
+`GameState`; chỉ thêm đường đi tốt hơn và bỏ qua entry cũ khi lấy khỏi heap.
+Kiểm tra đích khi lấy Node ra khỏi heap. Bộ đếm thứ tự giúp xử lý các Node cùng
+chi phí theo thứ tự thêm, không cần so sánh trực tiếp các State.
+
+UCS dùng `BaseSolver.successors()` và `reconstruct_path()`. Mỗi hành động có
+chi phí 1, kể cả `SWITCH`, nên lời giải có số hành động ít nhất.
+
+**Giao diện hiện tại:** giống A*, `solve()` trả về `list[Move]` khi tìm được
+lời giải, `[]` nếu đầu vào đã ở đích, hoặc `None` nếu không có lời giải.
+`SearchResult` và các số liệu đo lường ở trên vẫn là giao diện dự kiến, chưa
+được triển khai trong các solver hiện tại. UCS chưa được nối vào GUI.
+
+```python
+from BackEnd.Solver.UCSSolver import UCSSolver
+
+board = init_map("map09")
+rules = GameRules(board)
+actions = UCSSolver(rules).solve(board.game_state)
+```
+
+Chạy kiểm thử bằng `python -m pytest tests/test_ucs.py -q`: đối chiếu độ dài
+với BFS và replay lời giải trên các map 01, 02, 04, 08, 09; kiểm tra trạng thái
+đã thắng, màn vô nghiệm có chu trình và cập nhật đường đi có chi phí tốt hơn.
