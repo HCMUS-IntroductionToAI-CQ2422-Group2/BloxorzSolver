@@ -27,6 +27,14 @@ class GameController:
     def restart(self):
         self.load_level(self.map_name)
 
+    def clear_solution(self):
+        self.solution = []
+        self.solution_start = None
+        self.result = None
+        self.replay_mode = False
+        self.replaying = False
+        self.replay_index = 0
+
     def move(self, action, replay=False):
         if self.status != "playing":
             return False
@@ -38,16 +46,14 @@ class GameController:
             self.replaying = False
             return False
         if not replay:
-            self.solution = []
-            self.solution_start = None
-            self.result = None
-            self.replay_mode = False
+            self.clear_solution()
         self.history.append((self.state, action))
         self.board.add_game_state(next_state)
         self.status = "won" if self.rules.is_goal(next_state) else "playing"
         return True
 
     def set_solution(self, result, start):
+        self.replaying = False
         self.result = result
         self.solution = result.actions
         self.solution_start = start

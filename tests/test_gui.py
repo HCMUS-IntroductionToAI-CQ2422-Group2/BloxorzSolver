@@ -16,22 +16,189 @@ def app(monkeypatch, tmp_path):
     pygame.quit()
 
 
-def test_solver_is_placeholder_and_panels_render(app):
-    app.start_search("BFS")
-    assert app.worker is None
-    assert app.game.result is None
+def test_solver_mode_and_panels_render(app):
     app.toggle_panel("solver")
     app.draw()
-    assert app.panel == "solver"
+    assert app.mode == "solver"
+    assert app.panel is None
     app.toggle_panel("menu")
     app.draw()
     app.select_stage("map09")
+    assert app.game.map_name == "map09"
     assert app.panel is None
     for name in app.levels:
         app.progress.records[name] = {"stars": 3, "moves": 1}
     for name in app.levels:
         app.load_level(name)
         app.draw()
+
+
+def wait_for_search(app):
+    deadline = time.monotonic() + 15
+    while app.worker is not None and time.monotonic() < deadline:
+        app.poll_search()
+        time.sleep(.01)
+    assert app.worker is None, "Search worker did not finish"
+    assert app.connection is None
+    assert app.game.result is not None
+    return app.game.result
+
+
+@pytest.mark.parametrize("algorithm", ["BFS", "DFS", "UCS", "A*"])
+def test_real_worker_benchmark_and_replay(app, algorithm):
+    initial = app.game.state
+    app.start_search(algorithm)
+    assert app.worker is not None
+    app.draw()
+    result = wait_for_search(app)
+    assert result.algorithm == algorithm
+    assert result.status == "solved", result.message
+    assert result.expanded_nodes > 0
+    assert result.search_time_s > 0
+    assert result.peak_memory_bytes > 0
+    assert app.game.state == initial
+    app.draw()
+    app.toggle_replay()
+    while app.game.replay_index < len(result.actions):
+        app.replay_step()
+    app.animation = None
+    app.draw()
+    assert app.game.status == "won"
+    assert app.panel is None
+    assert app.progress.records == {}
+    app.toggle_replay()
+    assert app.game.state == initial
+    assert app.game.replaying
+    app.set_mode("manual")
+    assert app.game.status == "playing"
+    assert app.game.state == initial
+    assert not app.game.replaying
+
+
+@pytest.mark.parametrize("interrupt", ["escape", "restart", "stage", "manual"])
+def test_search_cancellation_discards_old_result(app, interrupt):
+    import pygame
+    app.start_search("A*")
+    if interrupt == "escape":
+        app.event(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_ESCAPE))
+    elif interrupt == "restart":
+        app.load_level("map01")
+    elif interrupt == "stage":
+        app.load_level("map09")
+    else:
+        app.set_mode("manual")
+    assert app.worker is None and app.connection is None
+    app.poll_search()
+    assert app.game.result is None
+    assert not app.game.replaying
+    app.draw()
+
+
+def test_second_run_replaces_result_and_manual_move_invalidates_it(app):
+    app.start_search("BFS")
+    wait_for_search(app)
+    app.start_search("UCS")
+    assert app.game.result is None
+    assert app.game.solution == []
+    result = wait_for_search(app)
+    assert result.algorithm == "UCS"
+    app.animate_move(result.actions[0])
+    assert app.game.result is None
+    assert not app.game.solution
+
+
+def test_worker_crash_is_reported(app):
+    app.start_search("A*")
+    app.worker.terminate()
+    app.worker.join(timeout=2)
+    app.poll_search()
+    assert app.worker is None and app.connection is None
+    assert app.game.result.status == "error"
+    assert app.game.result.peak_memory_bytes is None
+
+
+def test_deadline_kills_unresponsive_worker(app, monkeypatch):
+    app.start_search("A*")
+    monkeypatch.setattr("FrontEnd.app.monotonic", lambda: app.search_began + 33)
+    app.poll_search()
+    assert app.worker is None
+    assert app.game.result.status == "limit"
+
+
+def test_solver_buttons_start_search_and_replay(app):
+    import pygame
+    app.set_mode("solver")
+    app.draw()
+    # Click the actual Run button, then the actual Step button.
+    left, top = app.screen.get_width() - 370, 128
+    app.event(pygame.event.Event(pygame.MOUSEBUTTONDOWN, button=1, pos=(left+30, top+220)))
+    assert app.worker is not None
+    wait_for_search(app)
+    app.draw()
+    app.event(pygame.event.Event(pygame.MOUSEBUTTONDOWN, button=1, pos=(left+200, top+515)))
+    assert app.game.replay_index == 1
+
+
+def test_export_contains_measured_result_and_search_start(app, tmp_path):
+    import csv
+    app.start_search("UCS")
+    result = wait_for_search(app)
+    start = app.game.solution_start
+    app.step()
+    path = tmp_path / "results" / "benchmark.csv"
+    app.export_result(path)
+    app.export_result(path)
+    with path.open(newline="", encoding="utf-8") as file:
+        rows = list(csv.DictReader(file))
+    assert len(rows) == 2
+    row = rows[0]
+    assert row["map"] == "map01"
+    assert row["start_state"] == repr(start)
+    assert row["algorithm"] == "UCS"
+    assert row["status"] == "solved"
+    assert int(row["expanded_nodes"]) == result.expanded_nodes
+    assert float(row["search_time_s"]) == result.search_time_s
+    assert int(row["python_peak_bytes"]) == result.peak_memory_bytes
+    assert int(row["solution_length"]) == len(result.actions)
+    assert row["actions"] == " ".join(action.value for action in result.actions)
+
+
+def test_split_cube_switch_replay_does_not_roll_cube(app):
+    from BackEnd.objects.sharing import Move
+    app.set_mode("solver")
+    app.load_level("map09")
+    app.start_search("BFS")
+    result = wait_for_search(app)
+    index = result.actions.index(Move.SWITCH)
+    for _ in range(index):
+        app.step()
+    before = app.game.state.block
+    app.step()
+    after = app.game.state.block
+    assert before.positions == after.positions
+    assert before.active_cube != after.active_cube
+    assert app.animation is None
+
+
+@pytest.mark.parametrize("algorithm", ["BFS", "DFS", "UCS", "A*"])
+def test_worker_limit_shows_no_replay_or_fake_solution(app, monkeypatch, algorithm):
+    monkeypatch.setattr("FrontEnd.app.SEARCH_NODE_LIMIT", 0)
+    app.start_search(algorithm)
+    result = wait_for_search(app)
+    assert result.status == "limit"
+    assert result.path_cost is None
+    app.toggle_replay()
+    assert not app.game.replaying
+    app.draw()
+
+
+def test_close_window_disposes_worker(app):
+    import pygame
+    app.start_search("A*")
+    pygame.event.post(pygame.event.Event(pygame.QUIT))
+    app.run(frames=1)
+    assert app.worker is None and app.connection is None
+    assert not app.running
 
 
 def test_modal_blocks_movement(app):

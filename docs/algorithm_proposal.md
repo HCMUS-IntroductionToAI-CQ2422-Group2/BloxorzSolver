@@ -28,7 +28,7 @@ Mô hình hóa bài toán: **\(P = (S, s_0, A, T, G, c)\)**.
 |---|---|
 | `SearchNode` (`dataclass`) | Lưu `state`, `parent`, `action`, `g_cost`, `depth` để truy vết lời giải. |
 | `SearchResult` (`dataclass`) | Lưu `algorithm`, `status`, `actions`, `expanded_nodes`, `search_time_s`, `peak_memory_bytes` (nếu đo). `path_cost = len(actions)` khi giải thành công. |
-| `BaseSolver` | Chứa `rules: GameRules`, hàm sinh successors, hàm truy vết đường đi; quy định giao diện `solve(initial_state) -> SearchResult`. |
+| `BaseSolver` | Chứa `rules: GameRules`, hàm sinh successors, hàm truy vết đường đi và hook đo lường; `BackEnd.search.solve()` chuẩn hóa kết quả thành `SearchResult` cho UI. |
 | `BFSSolver` | Cài BFS với FIFO queue. |
 | `DFSSolver` | Cài DFS với LIFO stack và chống lặp trạng thái. |
 | `UCSSolver` | Cài UCS với priority queue ưu tiên `g_cost`; lưu chi phí tốt nhất theo State. |
@@ -75,7 +75,7 @@ class BaseSolver:
         ...
 
     def solve(self, initial_state):
-        """Trả về SearchResult; được ghi đè ở từng thuật toán."""
+        """BFS/UCS/A*: list[Move] hoặc None; DFS: SearchResult."""
         raise NotImplementedError
 
 class AStarSolver(BaseSolver):
@@ -87,8 +87,13 @@ class AStarSolver(BaseSolver):
 **Giao diện gọi thống nhất:**
 
 ```python
-solver = BFSSolver(rules)  # Hoặc DFSSolver / UCSSolver / AStarSolver
-result = solver.solve(initial_state)
+from BackEnd.search import solve
+
+result = solve(board, initial_state, "BFS")  # Hoặc DFS / UCS / A*
+# Gọi trực tiếp BFS/UCS/A* trả list[Move] | None:
+actions = BFSSolver(rules).solve(initial_state)
+# DFS giữ API SearchResult của main:
+dfs_result = DFSSolver(rules).solve(initial_state)
 ```
 
 **Quy ước kết quả và đo lường:**
@@ -112,8 +117,9 @@ chi phí 1, kể cả `SWITCH`, nên lời giải có số hành động ít nh�
 
 **Giao diện hiện tại:** giống A*, `solve()` trả về `list[Move]` khi tìm được
 lời giải, `[]` nếu đầu vào đã ở đích, hoặc `None` nếu không có lời giải.
-`SearchResult` và các số liệu đo lường ở trên vẫn là giao diện dự kiến, chưa
-được triển khai trong các solver hiện tại. UCS chưa được nối vào GUI.
+`BackEnd.search.solve()` bọc lời gọi solver bằng `Benchmark` và trả về
+`SearchResult` có số liệu đo lường cho GUI. UCS đã được nối vào chế độ
+**Solve by algorithm** cùng BFS, DFS và A*.
 
 ```python
 from BackEnd.Solver.UCSSolver import UCSSolver
@@ -126,3 +132,32 @@ actions = UCSSolver(rules).solve(board.game_state)
 Chạy kiểm thử bằng `python -m pytest tests/test_ucs.py -q`: đối chiếu độ dài
 với BFS và replay lời giải trên các map 01, 02, 04, 08, 09; kiểm tra trạng thái
 đã thắng, màn vô nghiệm có chu trình và cập nhật đường đi có chi phí tốt hơn.
+
+## 5. Benchmark và tích hợp UI
+
+`Benchmark` trong `BackEnd/Benchmark.py` chuẩn hóa ý tưởng hàm bọc `solve()`
+đo thời gian / `tracemalloc` ở nhánh BFS/Benchmark của nhóm. Mỗi lần chạy tạo
+solver mới, đo cả khởi tạo và tìm kiếm, bao gồm dựng bảng heuristic của A*.
+Kết quả dùng chung class `SearchResult` tại `BackEnd/Solver/SearchResult.py`.
+Wrapper nhận cả danh sách hành động từ BFS/UCS/A* và `SearchResult` từ DFS;
+giữ nguyên trạng thái lỗi/vô nghiệm của DFS và phân biệt việc dừng do giới hạn.
+`BaseSolver.successors()` ghi nhận số node mở rộng; các vòng tiền xử lý của A*
+kiểm tra thời hạn nhưng không cộng vào số node mở rộng của tìm kiếm.
+
+- `search_time_s`: giây, dùng `perf_counter`; gồm overhead của `tracemalloc`.
+- `peak_memory_bytes`: đỉnh cấp phát Python, không phải tổng RAM của tiến trình.
+- `expanded_nodes`: số lần thực sự sinh successors, không tính node đích hoặc
+  entry cũ của priority queue.
+- `path_cost`: `len(actions)` khi `solved`; `None` ở các trạng thái khác.
+- `status`: `solved`, `no_solution`, `limit`, `error`; `message` nêu lý do dừng.
+
+UI chạy solver trong tiến trình `spawn` riêng, giới hạn 30 giây / 150.000 node.
+Cancel, Esc, đổi màn, restart hoặc trở về chế độ thủ công sẽ dừng worker.
+Nếu worker bị lỗi hoặc bị cưỡng chế dừng bởi deadline của UI, số liệu node và
+bộ nhớ không thu được sẽ là `None`, không ghi thành số 0.
+
+Chọn **Solve by algorithm → thuật toán → Run** để chạy từ trạng thái hiện tại.
+**Replay / Step** phát lại từ trạng thái bắt đầu; **Export CSV** lưu benchmark
+cùng map, trạng thái và chuỗi hành động. Restart trước các lượt chạy để so sánh
+cùng đầu vào. Chế độ solver mở toàn bộ 20 màn nhưng không ghi sao hay tiến độ
+chiến dịch; DFS chỉ bảo đảm lời giải hợp lệ, không bảo đảm ngắn nhất.

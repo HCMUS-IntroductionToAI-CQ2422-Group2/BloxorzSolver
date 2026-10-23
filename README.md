@@ -1,81 +1,94 @@
-# Current GUI update
-
-The game now uses a procedural mountain background and isometric wooden blocks.
-Menu opens the stage selector; the lightbulb opens BFS / DFS / UCS / A* choices.
-These choices are placeholders only: GUI search execution is disconnected pending
-future backend integration. Existing search code is retained but not invoked by
-these controls. The earlier solver/replay instructions below describe the previous
-version, not the current UI.
-
 # Bloxorz Search Lab
 
-Python desktop GUI using Pygame, connected directly to the existing `Board`,
-`GameState`, and `GameRules`. No web server is required.
+Python desktop game built with Pygame. Play manually or solve any of the 20
+stages with the team's BFS, DFS, UCS and A* solver classes.
 
 ## Run
 
-Python 3.10 or newer. From this directory:
+Use Python 3.10 or newer. Create and activate a virtual environment, then run:
 
-```powershell
+```sh
 python -m venv .venv
-.\.venv\Scripts\python -m pip install -r requirements-gui.txt
-.\.venv\Scripts\python main.py
+# macOS / Linux:
+source .venv/bin/activate
+# Windows PowerShell instead: .\.venv\Scripts\Activate.ps1
+python -m pip install pygame-ce==2.5.8
+python main.py
 ```
 
 `pygame-ce` provides `import pygame`; do not install it alongside the original
-`pygame` distribution in the same environment. The original report plotting
-dependencies remain in `requirements.txt`; their pinned versions target older
-Python versions (use Python 3.11 for that full requirements file).
+`pygame` package. The full `requirements.txt` also includes report plotting
+packages pinned for older Python versions; use Python 3.11 for that file.
 
-## Controls
+## Play manually
 
-- Select any of the 20 numbered stages. New game and Restart reset the selected
-  stage, including its initial bridges. R is the restart shortcut.
-- Arrow keys or WASD follow the visible edges of the isometric board:
-  Up/W goes upper-left, Right/D upper-right, Down/S lower-right, and Left/A
-  lower-left. One extra input can wait until the current roll finishes; opening
-  a menu or restarting clears that input. Space changes the active split cube.
-  A mint outline identifies that cube. Space is ignored for an intact block.
-- Land upright in the dark, mint-outlined goal to win. An illegal roll shows a
-  loss message and preserves the last supported position until restart.
-- Orange tiles are fragile. Purple O, X and ( ) tiles are soft, heavy and split
-  switches. Mint bridges are open; pink crossed bridges are closed.
-- BFS / DFS / UCS / A* solve from the **current position**, including bridge
-  states and active cube. Restart first for comparable initial-state runs.
-- Replay restores the search's start state; Pause and Step inspect its actions.
-  Adjust playback from 1 to 10 actions/second. Manual moves discard old results.
-- Escape cancels a search or pauses replay. Selecting a stage, restarting or
-  closing the window terminates the worker so stale results cannot be applied.
-- Export CSV appends results to `output/search_results.csv`, including the
-  starting state and action sequence. The GUI reports search time, traced Python
-  peak allocations, expanded nodes and solution actions (Space included).
+- Arrow keys / WASD roll along the visible isometric edges. Space changes the
+  active cube after a split. One move can wait while an animation finishes.
+- Stand the intact block on the goal to win. Invalid moves trigger a fall and
+  restart. R or Restart resets the stage.
+- Stages opens the level selector. Manual campaign stages unlock through wins;
+  best scores are saved in `.save/progress.json`.
 
-## Structure
+## Solve by algorithm
 
-- `FrontEnd/app.py`: window, controls, process lifecycle and CSV export.
+1. Select **Solve by algorithm**. All stages are available in this mode.
+2. Choose **BFS**, **DFS**, **UCS** or **A\***, then press **Run**. Search starts
+   from the current board position, including bridge states and active cube.
+3. Read the benchmark: elapsed time, peak Python allocations, expanded nodes
+   and solution moves/cost. Results distinguish solved, no solution, limit and
+   error; an already-solved input has a valid zero-move solution.
+4. Use **Replay / Pause** or **Step** to inspect the solution. Playback speed is
+   adjustable from 1 to 10 moves/second. Replaying again restores the search's
+   starting state. Manual moves discard the old solution and measurements.
+5. **Export CSV** appends the result, map, starting state and action sequence to
+   `output/search_results.csv`.
+
+Search runs in a spawned process, capped at 30 seconds / 150,000 expanded nodes.
+Cancel or Escape stops it. Restarting, changing stages, returning to manual mode
+or closing the game disposes of the worker. A separate UI deadline also stops an
+unresponsive worker. Escape pauses replay and closes menus.
+
+Solver replays do not award campaign stars or unlock stages. Returning to manual
+mode resets the stage (or returns to stage 1 if the selected stage is locked).
+Restart before each run to compare algorithms from the same initial state.
+
+## Algorithms and benchmark
+
+- `BackEnd/Solver/`: BFS uses FIFO; DFS uses LIFO; UCS prioritizes path cost;
+  A* prioritizes path cost plus the existing relaxed-board heuristic.
+- `BackEnd/Benchmark.py`: `Benchmark` wraps solver construction and execution;
+  the shared `BackEnd/Solver/SearchResult.py` carries measurements and status to the UI. This centralizes the
+  timing / `tracemalloc` wrapper proposed in the team's BFS/Benchmark branch.
+- `BackEnd/search.py`: dispatches to the four solver classes and defines the
+  worker entry point. Direct BFS/UCS/A* `solver.solve(state)` calls return an
+  action list or `None`; DFS retains main's `SearchResult` return type.
+  `search.solve(board, state, algorithm)` returns the same `SearchResult` type
+  for all four algorithms. BFS also retains `_search(state)` for callers that
+  need the goal node and expanded-node count.
+- `FrontEnd/app.py`: controls, worker lifecycle, benchmark panel and CSV export.
 - `FrontEnd/controller.py`: gameplay and replay state.
-- `FrontEnd/renderer.py`: dynamic board and block rendering.
-- `BackEnd/search.py`: self-implemented baseline search algorithms.
-- Existing backend rules remain the single authority for movement and switches.
+- `GameRules` remains the authority for movement, switches and bridges.
 
-Search runs in a separate spawned process, capped at 30 seconds / 150,000 expanded
-nodes. A cap is reported separately from an exhausted unsolvable search. Each
-action costs 1, including switching cubes, so UCS and BFS minimize the same
-quantity. A* currently uses `h=0` at the goal and `h=1` elsewhere, a consistent,
-admissible but weak baseline even with teleportation. Improve and justify the
-cost function / heuristic for the report; the GUI does not establish comparative
-algorithm performance. Timing includes tracemalloc overhead; memory is peak
-Python allocations during search, **not total process RSS**.
+Every action, including switching cubes, costs 1. BFS and UCS minimize the
+number of moves; DFS does not guarantee a shortest solution. A* uses the team's
+relaxed-board distance table, including split states and teleportation.
+
+Measurements include solver construction, A* heuristic preparation and tracing
+overhead; they exclude UI drawing, process startup and replay. Peak memory is
+**Python allocations**, not total process RAM. Expanded nodes count successor
+generation, excluding goal nodes, obsolete heap entries and A* preprocessing.
+If the worker crashes or is forcibly stopped, unavailable counters display as
+unavailable, rather than as measured zeros.
 
 ## Verification
 
-```powershell
-.\.venv\Scripts\python -m pip install pytest
-.\.venv\Scripts\python -m pytest -q
-$env:SDL_VIDEODRIVER = 'dummy'
-.\.venv\Scripts\python main.py --frames 3 --screenshot output/gui.png
-Remove-Item Env:SDL_VIDEODRIVER
+```sh
+python -m pip install pytest
+python -m pytest -q
+# Headless screenshot on macOS / Linux:
+SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy python main.py --frames 3 --screenshot output/gui.png
 ```
 
-The project report and narrated/subtitled demo video remain separate assignment
-deliverables. Record any AI assistance and source references in the report.
+Tests cover solver optimality/replay, shared measurements, resource limits,
+spawned workers, cancellation, UI controls, campaign progress and game mechanics.
+Record any AI assistance and source references in the project report.

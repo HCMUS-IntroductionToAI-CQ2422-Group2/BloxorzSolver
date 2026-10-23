@@ -17,10 +17,11 @@ def clip_floor(vertices, side=1):
 
 def draw_wood(surface, state, project, scale, animation, layer=None):
     elapsed = monotonic() - animation['start'] if animation else 0
-    rolling = animation is not None and elapsed < .28
+    roll_seconds = min(.28, animation.get('duration', .28)) if animation else .28
+    rolling = animation is not None and elapsed < roll_seconds
     terminal = animation and animation['status'] in ('won', 'lost')
     lost = bool(terminal and animation['status'] == 'lost')
-    fall = max(0, (elapsed - .28) / .82) if terminal else 0
+    fall = max(0, (elapsed - roll_seconds) / .82) if terminal else 0
     if terminal and fall >= 1:
         return
     plan = animation.get('fall_plan') if animation else None
@@ -29,7 +30,7 @@ def draw_wood(surface, state, project, scale, animation, layer=None):
     dx = {'left': -1, 'right': 1}.get(direction, 0)
     dy = {'up': -1, 'down': 1}.get(direction, 0)
     rotate = rolling
-    t = min(1, elapsed / .28) if animation else 0
+    t = min(1, elapsed / roll_seconds) if animation else 0
     angle = (t*t*(3-2*t)) * math.pi/2
     drop = 5 * fall * fall if terminal and not lost else 0
     fade = max(0, min(1, (fall - .75) / .25)) if lost else 0
@@ -54,7 +55,7 @@ def draw_wood(surface, state, project, scale, animation, layer=None):
             if lost and not rolling and plan:
                 # A resting split cube must not fall with the unsupported cube.
                 if not block.is_split() or (x, y) not in plan['supported']:
-                    return fall_vertex((a,b,z), plan, elapsed - .28)
+                    return fall_vertex((a,b,z), plan, elapsed - roll_seconds)
             if terminal and not lost: z-=drop
             return (a,b,z)
         inset=.035
