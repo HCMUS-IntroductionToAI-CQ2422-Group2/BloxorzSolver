@@ -1,0 +1,64 @@
+% Phần này mô tả tích hợp solver vào giao diện game đã có của nhóm.
+\section{Tích hợp thuật toán vào giao diện game}
+\label{sec:ui_solver}
+
+\subsection{Phạm vi tích hợp}
+
+Trên nền giao diện Pygame và bộ luật chơi có sẵn của nhóm, phần tích hợp
+bổ sung chế độ \textit{Solve by algorithm}. Người dùng chọn BFS, DFS, UCS
+hoặc A*, chạy tìm kiếm, xem kết quả đo, phát lại lời giải và xuất CSV.
+Các solver dùng chung \texttt{GameRules}; giao diện không cài đặt lại luật
+di chuyển, công tắc, cầu hoặc tách khối~\cite{bloxorz_ui_source}.
+
+Luồng xử lý được tổ chức thành ba phần:
+\begin{enumerate}
+    \item \texttt{FrontEnd/app.py} nhận lựa chọn, lưu trạng thái bắt đầu và
+    tạo tiến trình tìm kiếm.
+    \item \texttt{BackEnd/search.py} chọn lớp solver và gọi
+    \texttt{Benchmark} để đo quá trình khởi tạo, tìm kiếm.
+    \item Kết quả được trả về UI; \texttt{GameController} lưu chuỗi hành
+    động và điều khiển replay từ đúng trạng thái đã bắt đầu tìm kiếm.
+\end{enumerate}
+
+\subsection{Chạy, dừng và phát lại lời giải}
+
+Tìm kiếm bắt đầu từ vị trí hiện tại, bao gồm trạng thái cầu và khối con
+đang hoạt động. Vì vậy, trước khi so sánh các thuật toán, cần khởi động
+lại cùng một màn để bảo đảm đầu vào giống nhau.
+
+Solver chạy trong tiến trình riêng bằng cơ chế \texttt{spawn}, giúp vòng
+lặp giao diện tiếp tục xử lý sự kiện. Người dùng có thể hủy tìm kiếm;
+đổi màn, chơi lại, trở về chế độ thủ công hoặc đóng cửa sổ cũng thu hồi
+worker. UI có thêm thời hạn giám sát để dừng worker không phản hồi và
+không sử dụng kết quả cũ sau khi trạng thái chơi thay đổi.
+
+Khi tìm được lời giải, \textit{Replay/Pause} phát hoặc tạm dừng chuỗi hành
+động, còn \textit{Step} thực hiện một hành động. Tốc độ phát lại điều chỉnh
+từ 1 đến 10 hành động/giây. Replay lại từ đầu khôi phục trạng thái xuất
+phát của lần tìm kiếm; thao tác di chuyển thủ công loại bỏ lời giải và
+số liệu cũ. Việc phát lại lời giải tự động không ghi sao hoặc mở khóa
+chiến dịch thủ công.
+
+\subsection{Hiển thị kết quả và xuất dữ liệu}
+
+Bảng benchmark hiển thị thời gian, đỉnh bộ nhớ Python, số node mở rộng và
+số hành động/chi phí lời giải. UI phân biệt bốn trạng thái:
+\texttt{solved}, \texttt{no\_solution}, \texttt{limit} và \texttt{error}.
+Nếu worker không trả được bộ đếm hoặc số liệu bộ nhớ, giao diện hiển thị
+không có số liệu thay vì ghi nhận một phép đo bằng 0.
+
+Nút \textit{Export CSV} nối kết quả vào \path{output/search_results.csv},
+kèm tên map, trạng thái bắt đầu và chuỗi hành động. File xuất từ UI dùng
+định dạng riêng; nó chưa đồng nhất với schema benchmark hàng loạt ở
+Mục~\ref{sec:benchmark}. Do đó, không ghép hai loại CSV theo vị trí cột.
+
+\subsection{Tương thích sau khi tích hợp vào main}
+
+Khi merge nhánh UI vào \texttt{main}, các thay đổi ở \texttt{BaseSolver},
+BFS và DFS cần được phối hợp. Phiên bản tích hợp giữ API
+\texttt{DFS.solve()} trả \texttt{SearchResult}, giữ
+\texttt{BFS.\_search()} trả node đích và số node mở rộng; lời gọi trực tiếp
+\texttt{solve()} của BFS, UCS và A* trả danh sách hành động hoặc
+\texttt{None}. Wrapper \texttt{BackEnd.search.solve()} chuẩn hóa cả bốn
+thuật toán thành cùng lớp \texttt{SearchResult} cho UI. DFS truyền ngoại
+lệ giới hạn ra wrapper để tránh báo nhầm việc dừng tìm kiếm thành lỗi.

@@ -1,0 +1,97 @@
+% Phần đóng góp: Nguyễn Thành Bảo. Đối chiếu BackEnd/Solver/UCSSolver.py.
+\subsection{Tìm kiếm theo chi phí đồng nhất (UCS)}
+\label{sec:ucs}
+
+\subsubsection{Mô hình trạng thái và chi phí}
+
+Thuật toán UCS (Uniform-Cost Search) tìm lời giải có tổng chi phí nhỏ nhất.
+Trong chương trình, mỗi đỉnh của đồ thị là một \texttt{GameState}, gồm trạng
+thái khối và tập cầu đang mở. Trạng thái khối thể hiện vị trí, hướng đặt,
+trạng thái tách đôi và khối con đang được điều khiển. Vì vậy, hai trạng thái
+cùng vị trí nhưng khác cấu hình cầu hoặc khối đang hoạt động vẫn có thể có
+các bước đi hợp lệ khác nhau.
+
+Các cạnh được sinh qua \texttt{GameRules.apply\_action()}, dùng chung luật chơi
+của nhóm. Tập hành động gồm lên, xuống, trái, phải và đổi khối con
+(\texttt{SWITCH}). Chỉ những hành động tạo được trạng thái hợp lệ mới trở
+thành cạnh. Trong phiên bản này, mọi hành động có chi phí bằng 1, kể cả đổi
+khối con. Với đường đi gồm $k$ hành động:
+\[
+    g(n)=\sum_{i=1}^{k}c_i=k.
+\]
+Do đó, tối thiểu hóa chi phí cũng là tối thiểu hóa số hành động.
+
+\subsubsection{Cấu trúc dữ liệu và quá trình tìm kiếm}
+
+Lớp \texttt{UCSSolver} kế thừa \texttt{BaseSolver}, dùng min-heap của Python
+để lấy node có chi phí nhỏ nhất. Mỗi phần tử heap có dạng
+$(g,\,\text{thứ tự thêm},\,\text{node})$. Bộ đếm thứ tự giúp xử lý trường hợp
+đồng chi phí mà không phải so sánh trực tiếp các đối tượng trạng thái.
+
+Bảng \texttt{best\_cost} ánh xạ toàn bộ trạng thái tới chi phí thấp nhất đã
+biết. Khi tìm được đường đi tốt hơn, thuật toán cập nhật bảng và thêm một
+phần tử mới vào heap. Phần tử cũ vẫn có thể còn trong heap; khi lấy ra, nó
+được bỏ qua nếu chi phí không còn bằng giá trị tốt nhất. Thuật toán chỉ
+kiểm tra đích sau bước loại phần tử cũ này, khi node được lấy khỏi heap.
+Lời giải được truy vết qua các trường \texttt{parent} và \texttt{action}
+của \texttt{SearchNode}~\cite{bloxorz_ucs_source}.
+
+\begin{algorithm}[htbp]
+    \caption{UCS trên trạng thái Bloxorz}
+    \label{alg:ucs}
+    \begin{algorithmic}[1]
+        \Require Trạng thái đầu $s_0$, bộ luật sinh trạng thái kế tiếp
+        \Ensure Chuỗi hành động tối ưu hoặc không có lời giải
+        \State $Q\gets$ min-heap chứa node gốc với chi phí $0$
+        \State $best[s_0]\gets 0$; các giá trị khác mặc định $+\infty$
+        \While{$Q$ chưa rỗng}
+            \State Lấy node $n$ có chi phí nhỏ nhất khỏi $Q$
+            \If{$g(n)\ne best[state(n)]$}
+                \State Bỏ qua $n$ và tiếp tục vòng lặp
+            \Else
+                \If{$state(n)$ là đích}
+                    \State \Return chuỗi hành động truy vết từ $n$
+                \EndIf
+                \For{mỗi $(a,s',c)$ hợp lệ từ $state(n)$}
+                    \State $g'\gets g(n)+c$
+                    \If{$g'<best[s']$}
+                        \State $best[s']\gets g'$
+                        \State Thêm node con $(s',n,a,g')$ vào $Q$
+                    \EndIf
+                \EndFor
+            \EndIf
+        \EndWhile
+        \State \Return không có lời giải
+    \end{algorithmic}
+\end{algorithm}
+
+\subsubsection{Tính chất và giới hạn}
+
+Với số trạng thái hữu hạn và chi phí cạnh dương, khi lấy node hợp lệ có
+chi phí nhỏ nhất ra khỏi heap, không thể có đường đi chưa xử lý nào tới
+node đó với chi phí thấp hơn: đường đi như vậy phải đi qua một node có
+chi phí nhỏ hơn, vốn đã được ưu tiên xử lý trước. Vì vậy, khi node đích
+được lấy ra, chi phí lời giải là tối ưu. Nếu heap rỗng, toàn bộ phần đồ thị
+có thể đi tới đã được duyệt mà không tìm thấy đích.
+
+Gọi $V$ và $E$ là số trạng thái và cạnh trong đồ thị có thể đi tới. Nếu xem
+chi phí sinh trạng thái và tra bảng băm là hằng số, cách cài đặt heap cho
+phép giữ phần tử cũ có thời gian $O((V+E)\log(V+E))$ và bộ nhớ phụ
+$O(V+E)$ trong trường hợp xấu nhất. Các giới hạn thực tế của chương trình
+có thể dừng tìm kiếm trước khi thuật toán kết luận; trường hợp này được
+báo là vượt giới hạn, không phải vô nghiệm.
+
+Vì mọi hành động hiện có cùng chi phí, BFS và UCS đều tối thiểu hóa số
+bước. UCS không được kỳ vọng luôn nhanh hơn BFS; heap còn có chi phí quản
+lý riêng. Lợi ích của cơ chế cập nhật chi phí thể hiện khi mở rộng bài toán
+sang các cạnh có trọng số khác nhau. Trường hợp này đã được kiểm thử bằng
+đồ thị tổng hợp, không thay đổi hàm chi phí của game.
+
+\subsubsection{Giao diện và kiểm thử}
+
+Lời gọi trực tiếp \texttt{UCSSolver.solve(initial\_state)} trả danh sách
+hành động, danh sách rỗng nếu đầu vào đã ở đích, hoặc \texttt{None} nếu
+không có lời giải. Solver không sửa bàn cờ hay trạng thái đầu vào.
+Các kiểm thử trong \path{tests/test_ucs.py} đối chiếu độ dài với BFS,
+replay lời giải trên map01, map02, map04, map08 và map09; kiểm tra chu
+trình vô nghiệm, cập nhật đường đi tốt hơn và bỏ qua phần tử heap cũ.
