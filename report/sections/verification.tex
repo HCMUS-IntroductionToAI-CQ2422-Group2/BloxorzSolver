@@ -1,0 +1,55 @@
+\section{Kiểm thử và phạm vi đóng góp}
+
+\subsection{Kiểm thử tích hợp}
+
+Các nhóm kiểm thử tập trung vào hành vi có thể quan sát:
+\begin{itemize}
+    \item UCS: đối chiếu chi phí với BFS, replay hợp lệ, không làm đổi
+    trạng thái đầu vào, xử lý chu trình và đường đi có chi phí cải thiện.
+    \item Benchmark: lời giải của cả bốn thuật toán, số node ở các
+    trường hợp nhỏ, trạng thái đã ở đích/vô nghiệm, giới hạn và dọn bộ đo
+    khi lỗi xảy ra.
+    \item UI: worker thật dùng \texttt{spawn}, chạy và hủy tìm kiếm,
+    replay, đổi khối con, xuất CSV và không làm thay đổi tiến độ chiến
+    dịch khi dùng solver.
+    \item Visualization: phép tổng hợp và tỷ lệ theo cùng map; phát
+    hiện dữ liệu trùng, thiếu, trộn run, sai chi phí hoặc replay không
+    hợp lệ; không thay số liệu thiếu bằng 0.
+\end{itemize}
+
+Tại merge commit \texttt{8f1f183}, bộ kiểm thử ghi nhận 237 tests đạt.
+Sau khi cập nhật \texttt{main} tới \texttt{a89aad2}, bộ kiểm thử hiện có
+ghi nhận 228 tests đạt và 8 kiểm tra visualization đạt. Hai con số
+thuộc hai phiên bản có tập test khác nhau; bản cập nhật đã bỏ file
+test DFS riêng và bổ sung kiểm tra maps mới, nên không diễn giải sự
+thay đổi số lượng thành mức tăng hoặc giảm chất lượng phần mềm.
+Các lệnh kiểm tra tương ứng từ thư mục gốc:
+
+\begin{lstlisting}[language=bash]
+python -m pytest -q
+python -m unittest visualization.checks -v
+\end{lstlisting}
+
+Các kết quả trên xác nhận những trường hợp được kiểm thử, không thay
+thế chứng minh tính đúng của thuật toán hoặc bảo đảm không còn lỗi
+trên mọi đầu vào. Phép đo hiệu năng trong Mục~\ref{sec:benchmark}
+vẫn dùng CSV lịch sử, không lấy thời gian chạy test làm benchmark.
+
+\subsection{Phạm vi phần việc được trình bày}
+
+Phần đóng góp của Nguyễn Thành Bảo được mô tả trong các mục trên gồm:
+cài đặt UCS; tích hợp chế độ chạy thuật toán và replay vào UI; chuẩn
+hóa phép đo benchmark; xây dựng CSV 20 maps và schema; tạo notebook
+với bảy biểu đồ; xử lý tương thích và kiểm thử khi merge với code nhóm.
+
+Bộ luật chơi, giao diện nền, BFS, DFS và heuristic A* là các thành
+phần chung của nhóm được sử dụng hoặc điều chỉnh để tích hợp. Bộ 15
+maps mới trên \texttt{main} là phần bổ sung của nhóm, không được nhận
+là phần tự xây dựng trong phạm vi công việc này. Mức độ hoàn thành
+và phân công cuối cùng cần được các thành viên thống nhất.
+
+Trong quá trình thực hiện có sử dụng trợ lý AI Codex để hỗ trợ soạn
+và chỉnh sửa code, tạo kiểm thử, xử lý tích hợp Git và tổng hợp nội
+dung báo cáo. Bản thảo này được đối chiếu với mã nguồn, CSV và kết
+quả kiểm thử trong repository; người thực hiện cần rà soát nội dung
+và tuân theo quy định khai báo hỗ trợ AI của môn học trước khi nộp.
