@@ -1,25 +1,9 @@
 """Common measurement and resource limits for every solver."""
 
-from dataclasses import dataclass, field
 from time import perf_counter
 import tracemalloc
 
-from BackEnd.objects.sharing import Move
-
-
-@dataclass
-class SearchResult:
-    algorithm: str
-    status: str
-    actions: list[Move] = field(default_factory=list)
-    expanded_nodes: int | None = 0
-    search_time_s: float = 0.0
-    peak_memory_bytes: int | None = 0
-    message: str = ""
-
-    @property
-    def path_cost(self):
-        return len(self.actions) if self.status == "solved" else None
+from BackEnd.Solver.SearchResult import SearchResult
 
 
 class SearchLimitReached(Exception):
@@ -64,10 +48,15 @@ class Benchmark:
             if not rules.is_valid(initial_state):
                 raise ValueError("The initial state is invalid.")
             solver = solver_class(rules, benchmark=self)
-            actions = solver.solve(initial_state)
+            outcome = solver.solve(initial_state)
             self.check_time()
-            result.status = "solved" if actions is not None else "no_solution"
-            result.actions = actions if actions is not None else []
+            if isinstance(outcome, SearchResult):
+                # DFS keeps main's public result API. The outer measurements
+                # below still cover construction and enforce the same limits.
+                result = outcome
+            else:
+                result.status = "solved" if outcome is not None else "no_solution"
+                result.actions = outcome if outcome is not None else []
         except SearchLimitReached as error:
             result.status = "limit"
             result.message = str(error)

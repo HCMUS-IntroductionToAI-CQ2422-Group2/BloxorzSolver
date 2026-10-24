@@ -5,6 +5,9 @@ import tracemalloc
 import pytest
 
 from BackEnd.Benchmark import Benchmark
+from BackEnd.Solver.BFSSolver import BFSSolver
+from BackEnd.Solver.DFSSolver import DFSSolver
+from BackEnd.Solver.SearchResult import SearchResult
 from BackEnd.init_map import init_map
 from BackEnd.logic.board import Board
 from BackEnd.logic.game_rules import GameRules
@@ -18,6 +21,7 @@ def test_benchmarked_solution_replays_without_mutating_board(algorithm, map_id):
     board = init_map(map_id)
     initial = board.game_state
     result = solve(board, initial, algorithm)
+    assert isinstance(result, SearchResult)
     assert result.status == "solved", result.message
     assert board.game_state is initial
     assert result.expanded_nodes > 0
@@ -102,3 +106,52 @@ def test_astar_preprocessing_checks_deadline(monkeypatch):
     result = solve(board, board.game_state, "A*", time_limit=1)
     assert result.status == "limit"
     assert result.expanded_nodes == 0
+
+
+def test_bfs_core_api_matches_benchmarked_result():
+    board = init_map("map02")
+    solver = BFSSolver(GameRules(board))
+    goal, expanded = solver._search(board.game_state)
+    result = solve(board, board.game_state, "BFS")
+    assert goal is not None
+    assert solver.reconstruct_path(goal) == result.actions
+    assert goal.depth == result.path_cost
+    assert expanded == result.expanded_nodes
+
+
+def test_dfs_error_result_is_preserved_by_benchmark(monkeypatch):
+    board = init_map("map01")
+    rules = GameRules(board)
+
+    def fail(state):
+        raise RuntimeError("DFS search failed")
+
+    monkeypatch.setattr(rules, "is_goal", fail)
+    result = Benchmark().run(DFSSolver, rules, board.game_state, "DFS")
+    assert isinstance(result, SearchResult)
+    assert result.status == "error"
+    assert result.message == "RuntimeError: DFS search failed"
+    assert result.actions == []
+    assert result.path_cost is None
+    assert result.expanded_nodes == 0
+
+
+def test_dfs_deadline_during_search_is_limit_not_error(monkeypatch):
+    board = init_map("map01")
+    rules = GameRules(board)
+    clock = [0.0]
+    apply_action = rules.apply_action
+
+    def advance_clock(state, action):
+        clock[0] = 10.0
+        return apply_action(state, action)
+
+    monkeypatch.setattr("BackEnd.Benchmark.perf_counter", lambda: clock[0])
+    monkeypatch.setattr(rules, "apply_action", advance_clock)
+    result = Benchmark(time_limit=1).run(DFSSolver, rules, board.game_state, "DFS")
+    assert result.status == "limit"
+    assert result.message == "Time limit reached."
+    assert result.expanded_nodes == 1
+    assert result.actions == []
+    assert result.path_cost is None
+    assert not tracemalloc.is_tracing()

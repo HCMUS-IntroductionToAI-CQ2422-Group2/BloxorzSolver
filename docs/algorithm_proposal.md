@@ -28,7 +28,7 @@ Mô hình hóa bài toán: **\(P = (S, s_0, A, T, G, c)\)**.
 |---|---|
 | `SearchNode` (`dataclass`) | Lưu `state`, `parent`, `action`, `g_cost`, `depth` để truy vết lời giải. |
 | `SearchResult` (`dataclass`) | Lưu `algorithm`, `status`, `actions`, `expanded_nodes`, `search_time_s`, `peak_memory_bytes` (nếu đo). `path_cost = len(actions)` khi giải thành công. |
-| `BaseSolver` | Chứa `rules: GameRules`, hàm sinh successors, hàm truy vết đường đi; quy định giao diện `solve(initial_state) -> SearchResult`. |
+| `BaseSolver` | Chứa `rules: GameRules`, hàm sinh successors, hàm truy vết đường đi và hook đo lường; `BackEnd.search.solve()` chuẩn hóa kết quả thành `SearchResult` cho UI. |
 | `BFSSolver` | Cài BFS với FIFO queue. |
 | `DFSSolver` | Cài DFS với LIFO stack và chống lặp trạng thái. |
 | `UCSSolver` | Cài UCS với priority queue ưu tiên `g_cost`; lưu chi phí tốt nhất theo State. |
@@ -75,7 +75,7 @@ class BaseSolver:
         ...
 
     def solve(self, initial_state):
-        """Trả về SearchResult; được ghi đè ở từng thuật toán."""
+        """BFS/UCS/A*: list[Move] hoặc None; DFS: SearchResult."""
         raise NotImplementedError
 
 class AStarSolver(BaseSolver):
@@ -90,8 +90,10 @@ class AStarSolver(BaseSolver):
 from BackEnd.search import solve
 
 result = solve(board, initial_state, "BFS")  # Hoặc DFS / UCS / A*
-# Gọi trực tiếp class solver vẫn trả list[Move] | None:
+# Gọi trực tiếp BFS/UCS/A* trả list[Move] | None:
 actions = BFSSolver(rules).solve(initial_state)
+# DFS giữ API SearchResult của main:
+dfs_result = DFSSolver(rules).solve(initial_state)
 ```
 
 **Quy ước kết quả và đo lường:**
@@ -136,6 +138,9 @@ với BFS và replay lời giải trên các map 01, 02, 04, 08, 09; kiểm tra 
 `Benchmark` trong `BackEnd/Benchmark.py` chuẩn hóa ý tưởng hàm bọc `solve()`
 đo thời gian / `tracemalloc` ở nhánh BFS/Benchmark của nhóm. Mỗi lần chạy tạo
 solver mới, đo cả khởi tạo và tìm kiếm, bao gồm dựng bảng heuristic của A*.
+Kết quả dùng chung class `SearchResult` tại `BackEnd/Solver/SearchResult.py`.
+Wrapper nhận cả danh sách hành động từ BFS/UCS/A* và `SearchResult` từ DFS;
+giữ nguyên trạng thái lỗi/vô nghiệm của DFS và phân biệt việc dừng do giới hạn.
 `BaseSolver.successors()` ghi nhận số node mở rộng; các vòng tiền xử lý của A*
 kiểm tra thời hạn nhưng không cộng vào số node mở rộng của tìm kiếm.
 
