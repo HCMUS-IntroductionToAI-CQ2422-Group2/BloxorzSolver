@@ -1,0 +1,89 @@
+\section{Project Planning \& Task Distribution}
+
+\subsection{Kế hoạch triển khai dự án}
+
+Dự án Bloxorz Solver được chia thành các nhóm công việc chính: xây dựng
+logic trò chơi, phát triển giao diện, cài đặt các thuật toán tìm kiếm và
+chuẩn bị báo cáo. Logic trò chơi và mô hình trạng thái là nền tảng dùng
+chung, giúp các thành viên phát triển giao diện và thuật toán song song
+mà vẫn sử dụng thống nhất các quy tắc di chuyển, công tắc và cầu.
+
+Kế hoạch triển khai dưới đây được tổng hợp từ lịch sử commit trong
+khoảng ngày 12/10/2026 đến 22/10/2026. Các giai đoạn có thời gian giao
+nhau do nhiều mô-đun được phát triển đồng thời.
+
+\begin{table}[H]
+    \centering
+    \caption{Các giai đoạn triển khai dự án}
+    \label{tab:project_timeline}
+    \small
+    \renewcommand{\arraystretch}{1.2}
+    \begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{2.7cm}
+        >{\raggedright\arraybackslash}p{2.5cm}
+        >{\raggedright\arraybackslash}X@{}}
+        \toprule
+        \textbf{Giai đoạn} & \textbf{Thời gian} & \textbf{Nội dung chính} \\
+        \midrule
+        Xây dựng nền tảng & 12--15/10 &
+        Khởi tạo repository và cấu trúc mã nguồn; xây dựng các đối tượng
+        trò chơi, \texttt{Board}, \texttt{GameRules}, dữ liệu 20 màn chơi
+        và các kiểm thử logic. \\
+        \midrule
+        Phát triển giao diện & 17--19/10 &
+        Xây dựng ứng dụng Pygame, bộ điều khiển và hiển thị bàn chơi;
+        bổ sung menu, quản lý tiến trình, hiệu ứng chuyển động và sửa
+        lỗi tương tác. \\
+        \midrule
+        Phát triển thuật toán & 19--22/10 &
+        Mô hình hóa bài toán; xây dựng khung solver dùng chung; cài đặt
+        BFS, DFS, UCS và A*; bổ sung heuristic, mã đo hiệu năng và
+        kiểm thử thuật toán. \\
+        \midrule
+        Viết báo cáo& Từ ngày 19 &
+        Viết báo cáo LaTeX, chuẩn bị video\\
+        \bottomrule
+    \end{tabularx}
+\end{table}
+
+\subsection{Phân công nhiệm vụ}
+
+\begin{table}[H]
+    \centering
+    \caption{Phân công nhiệm vụ của các thành viên}
+    \label{tab:task_distribution}
+    \small
+    \renewcommand{\arraystretch}{1.2}
+    \begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{3.5cm}
+        >{\raggedright\arraybackslash}X@{}}
+        \toprule
+        \textbf{Thành viên} & \textbf{Nhiệm vụ} \\
+        \midrule
+        Ngô Hoàng Minh &
+        \textbullet\ Khởi tạo dự án, tổ chức mã nguồn và dữ liệu dùng chung. \newline
+        \textbullet\ Xây dựng \texttt{Board}, \texttt{GameRules}, bộ 20 màn chơi và công cụ trực quan hóa bản đồ. \newline
+        \textbullet\ Mô hình hóa bài toán, xây dựng khung solver, cài đặt A* và heuristic. \newline
+        \textbullet\ Viết kiểm thử logic, bản đồ và A*; sửa lỗi GUI. \newline \\
+        \midrule
+        Phan Nhật Minh &
+        \textbullet\ Định nghĩa các loại ô và cầu; khai báo thư viện phụ thuộc. \newline
+        \textbullet\ Cài đặt thuật toán BFS. \newline
+        \textbullet\ Bổ sung mã đo thời gian, bộ nhớ, số nút mở rộng và độ dài lời giải. \\
+        \midrule
+        Nguyễn Thành Bảo &
+        \textbullet\ Xây dựng cơ chế khối, công tắc và tương tác với cầu. \newline
+        \textbullet\ Tích hợp các thành phần vào API backend dùng chung. \newline
+        \textbullet\ Cài đặt UCS, viết kiểm thử và tài liệu thuật toán. \\
+        \midrule
+        Đỗ Ngọc Hải &
+        \textbullet\ Xây dựng ứng dụng Pygame, bộ điều khiển và hiển thị trò chơi. \newline
+        \textbullet\ Quản lý tiến trình, sửa hiệu ứng rơi và viết kiểm thử giao diện, chuyển động. \newline
+        \textbullet\ Cài đặt DFS, bổ sung cấu trúc kết quả tìm kiếm và kiểm thử DFS. \\
+        \midrule
+        Nguyễn Xuân Lộc &
+        \textbullet\ Điều chỉnh tỷ lệ hiển thị bàn chơi, khối và ký hiệu công tắc. \newline
+        \textbullet\ Hoàn thiện menu, màn hình chiến thắng và hiệu ứng ngôi sao. \newline
+        \textbullet\ Cải thiện hiệu ứng rơi và bổ sung cơ chế tự khởi động lại màn chơi khi thua. \\
+        \bottomrule
+    \end{tabularx}
+\end{table}
+

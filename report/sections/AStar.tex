@@ -1,0 +1,256 @@
+\section{Thuật toán A*}
+\subsection{Mô hình hoá bài toán}
+Nhóm chúng em áp dụng kiến thức môn Cơ Sở Trí Tuệ Nhân Tạo vào để tiến hành mô hình hoá bài toán trước khi cài đặt thuật toán, cụ thể như sau:
+\begin{itemize}
+    \item \textbf{State:} Mỗi trạng thái được biểu diễn bởi đối tượng
+    \texttt{GameState}, gồm trạng thái khối và tập các cầu đang mở. Có thể
+    ký hiệu trạng thái dưới dạng
+    \[
+        s = (P, o, a, B),
+    \]
+    trong đó $P$ là bộ tọa độ các ô mà khối chiếm giữ; $o$ là hướng của
+    khối, nhận một trong bốn giá trị \texttt{STANDING} (đứng),
+    \texttt{HORIZONTAL} (nằm theo trục $x$), \texttt{VERTICAL} (nằm theo
+    trục $y$) hoặc \texttt{SPLIT} (tách thành hai khối con); $a$ là chỉ số
+    khối con đang được điều khiển khi khối bị tách; $B$ là tập mã định danh
+    của các cầu đang mở, được lưu bằng \texttt{frozenset}.
+
+    Khi khối đứng, $P$ có một tọa độ; khi khối nằm hoặc bị tách, $P$ có
+    hai tọa độ. Các tọa độ được sắp xếp để chuẩn hóa biểu diễn; khi khối
+    bị tách, chỉ số $a$ được điều chỉnh theo thứ tự này để giữ đúng khối
+    con đang được chọn. Trạng thái ban đầu $s_0$ được lấy từ
+    \texttt{board.game\_state}. Hai trạng thái có cùng vị trí và hướng
+    nhưng khác tập cầu đang mở hoặc khác khối con đang được chọn vẫn là
+    hai trạng thái khác nhau.
+
+    \item \textbf{Goal:} Trạng thái đích là một trạng thái hợp lệ mà khối
+    nguyên vẹn đang đứng trên ô có kiểu \texttt{Goal}. Điều kiện này được
+    kiểm tra bởi \texttt{GameRules.is\_goal}. Khối nằm ngang qua ô đích
+    hoặc một khối con nằm trên ô đích chưa thỏa mãn điều kiện thắng.
+    Mục tiêu của thuật toán là tìm chuỗi hành động hợp lệ từ $s_0$ đến
+    một trạng thái đích với tổng chi phí nhỏ nhất.
+
+    \item \textbf{Actions:} Tập hành động gồm \texttt{UP}, \texttt{DOWN},
+    \texttt{LEFT}, \texttt{RIGHT} và \texttt{SWITCH}. Bốn hành động đầu
+    làm khối nguyên vẹn lăn theo hướng tương ứng; nếu khối đã bị tách,
+    chúng chỉ di chuyển khối con đang được chọn một ô. Hành động
+    \texttt{SWITCH} chỉ hợp lệ khi khối bị tách và dùng để đổi khối con
+    đang được điều khiển, không làm thay đổi vị trí.
+    Tại mỗi trạng thái, \texttt{get\_valid\_actions} chỉ trả về các hành
+    động hợp lệ. Mỗi hành động, kể cả \texttt{SWITCH}, có chi phí bằng
+    $1$, nên chi phí đường đi $g(s)$ chính là số hành động đã thực hiện.
+
+    \item \textbf{Transition Model:} Hàm \mbox{\texttt{apply\_action}}
+    của \texttt{GameRules} xác định trạng thái kế tiếp:
+    \[
+        T(s, u) = s', \qquad u \in A(s),
+    \]
+    với $A(s)$ là tập hành động hợp lệ tại $s$. Đối với hành động di
+    chuyển, hàm tính vị trí và hướng mới theo tư thế hiện tại, sau đó
+    kiểm tra hình dạng khối và khả năng nâng đỡ của các ô bên dưới.
+    Di chuyển ra ngoài bàn cờ, đi lên cầu đang đóng hoặc đứng trên ô
+    dễ vỡ đều không hợp lệ.
+
+    Sau khi khối đáp xuống, các công tắc được kích hoạt sẽ được xử lý
+    theo thứ tự mã định danh để cập nhật cầu bằng hiệu ứng
+    \texttt{TOGGLE} hoặc \texttt{SET}. Công tắc tách khối còn đưa hai
+    khối con đến các vị trí được cấu hình. Trạng thái sau hiệu ứng được
+    kiểm tra lại; nếu khối trước hành động đã ở dạng tách và hai khối
+    con sau di chuyển nằm kề nhau theo cạnh, chúng được ghép thành một
+    khối nằm. Riêng \texttt{SWITCH} chỉ đổi chỉ số khối con đang được
+    chọn, không kích hoạt công tắc hay ghép khối.
+    Hàm trả về trạng thái mới khi hợp lệ và \texttt{None} nếu hành động
+    không hợp lệ, đồng thời không thay đổi trạng thái đầu vào.
+
+    \item \textbf{Heuristic Function:} Thuật toán đánh giá mỗi nút bằng
+    \[
+        f(s) = g(s) + h(s).
+    \]
+    Trong cài đặt, $h(s)$ được tra từ \texttt{heuristic\_table}, được
+    xây dựng một lần khi khởi tạo bộ giải bằng hàm
+    \texttt{\_build\_heuristic\_table}. Nhóm sử dụng khoảng cách ngắn
+    nhất trên một bài toán nới lỏng: tất cả cầu luôn mở và các hiệu ứng
+    thay đổi cầu của công tắc được loại bỏ. Các quy tắc lăn khối, ô dễ
+    vỡ, tách khối, dịch chuyển khối con, đổi khối con và ghép khối vẫn
+    được giữ nguyên.
+
+    Bộ giải liệt kê các cấu hình khối đứng, nằm và tách trên các vị trí
+    của bàn cờ, bao gồm cả vị trí cầu. Với cấu hình tách, cả hai lựa
+    chọn khối con đang được điều khiển đều được xét. Từ các cấu hình
+    hợp lệ, bộ giải sinh các chuyển trạng thái và lưu danh sách tiền
+    nhiệm của từng cấu hình. Sau đó, BFS ngược được thực hiện đồng
+    thời từ tất cả cấu hình đứng trên ô đích để tính
+    \[
+        h(s) = d_{\mathrm{relaxed}}\bigl(\operatorname{block}(s),
+        \mathcal{G}_{\mathrm{relaxed}}\bigr),
+    \]
+    trong đó $d_{\mathrm{relaxed}}$ là số hành động ít nhất trên đồ thị
+    nới lỏng và $\mathcal{G}_{\mathrm{relaxed}}$ là tập cấu hình đích.
+    Việc lưu tiền nhiệm giúp BFS đi ngược đúng các cạnh có hướng, kể
+    cả khi công tắc gây dịch chuyển khối. Khóa tra cứu chỉ là
+    \texttt{state.block}, không bao gồm tập cầu đang mở. Cấu hình đích
+    có giá trị $0$; cấu hình không có đường đến đích trong bài toán
+    nới lỏng nhận giá trị $+\infty$.
+
+    Do việc mở sẵn mọi cầu và bỏ hiệu ứng thay đổi cầu không loại bỏ
+    đường đi hợp lệ nào của bài toán gốc khi chỉ xét cấu hình khối,
+    heuristic không đánh giá quá cao chi phí còn lại, tức là
+    $h(s) \leq h^*(s)$. Với mỗi chuyển trạng thái hợp lệ $s \to s'$, ta
+    còn có $h(s) \leq 1 + h(s')$. Vì vậy, heuristic có tính chấp nhận
+    được và nhất quán, giúp A* tìm lời giải có số hành động ít nhất.
+
+    \item \textbf{Avoid revisiting states:} Bộ giải sử dụng từ điển
+    \texttt{g\_score} để lưu chi phí nhỏ nhất đã tìm được đến từng
+    \texttt{GameState}. Ban đầu, $g\_score[s_0] = 0$. Khi sinh trạng
+    thái kế tiếp $s'$ từ $s$, thuật toán tính $g_{\mathrm{new}} = g(s)+1$.
+    Nếu $g_{\mathrm{new}} \geq g\_score[s']$, trạng thái này bị bỏ qua;
+    nếu nhỏ hơn, thuật toán cập nhật chi phí và đưa nút mới vào hàng
+    đợi ưu tiên. Trạng thái chưa có trong từ điển được xem là có chi
+    phí $+\infty$.
+
+    Hàng đợi \texttt{PriorityQueue} lưu bộ ba
+    $(f(s),\,\texttt{counter},\,\texttt{node})$, ưu tiên nút có $f(s)$
+    nhỏ nhất; bộ đếm tăng dần phân xử các nút có cùng giá trị $f$ theo
+    thứ tự đưa vào. Khi lấy một nút ra, nếu chi phí của nút lớn hơn
+    giá trị hiện có trong \texttt{g\_score}, nút đó bị bỏ qua vì đã có
+    đường đi tốt hơn. Cơ chế này hạn chế duyệt lặp nhưng vẫn cho phép
+    xét lại một trạng thái khi tìm được đường đi có chi phí thấp hơn.
+    Khi lấy được nút đích, bộ giải truy vết các liên kết cha để trả về
+    chuỗi hành động; nếu hàng đợi rỗng mà chưa gặp đích, bộ giải trả
+    về \texttt{None}.
+\end{itemize}
+
+
+\subsection{Về hàm Heuristic}
+Ban đầu, em cân nhắc thiết kế hàm heuristic dựa trên khoảng cách
+Manhattan. Tuy nhiên, khoảng cách giữa các ô chưa phản ánh đầy đủ số
+hành động trong Bloxorz: một lần lăn có thể làm tọa độ khối thay đổi
+nhiều hơn một ô, tư thế khối ảnh hưởng đến cách di chuyển, và công tắc
+tách khối có thể đưa các khối con đến vị trí khác trên bản đồ. Vì vậy,
+nếu dùng trực tiếp khoảng cách Manhattan làm số bước còn lại thì chưa
+thể bảo đảm tính chấp nhận được. Sau khi trao đổi, nhóm em lựa chọn
+heuristic dựa trên khoảng cách ngắn nhất trong một bài toán nới lỏng,
+được tính trước bằng \textbf{BFS ngược đa nguồn}.
+
+\subsubsection{Xây dựng bài toán nới lỏng}
+Bước đầu tiên là tạo một bản sao của bàn cờ, mở sẵn tất cả các cầu và
+loại bỏ các hiệu ứng thay đổi cầu của công tắc. Trong mã nguồn, các
+công tắc được sao chép với thuộc tính \texttt{effects} rỗng; tập
+\texttt{open\_bridges} chứa mã định danh của toàn bộ cầu. Nhờ đó, việc
+đi qua một cầu không còn phụ thuộc vào lịch sử kích hoạt công tắc.
+
+Việc nới lỏng chỉ áp dụng cho cơ chế đóng, mở cầu. Các ô dễ vỡ vẫn
+không cho phép khối đứng lên; công tắc tách khối vẫn tách và dịch
+chuyển hai khối con đến vị trí đã cấu hình. Các quy tắc lăn, di chuyển
+khối con, đổi khối con đang được điều khiển và ghép khối vẫn được
+thực hiện bởi \texttt{GameRules}. Giữ lại các quy tắc này giúp giá trị
+ước lượng phản ánh tư thế và khả năng di chuyển của khối.
+
+Vì trạng thái cầu đã được cố định, mỗi đỉnh trong đồ thị nới lỏng chỉ
+cần lưu một \texttt{BlockState}, gồm vị trí, hướng và chỉ số khối con
+đang được chọn. Gọi đồ thị này là
+$G_R = (V_R, E_R)$ và tập cấu hình đứng trên ô đích là
+$\mathcal{G}_R$. Với trạng thái thực $s$, heuristic được định nghĩa bởi
+\[
+    h(s) = \min_{q_g \in \mathcal{G}_R}
+    d_{G_R}\bigl(\operatorname{block}(s), q_g\bigr),
+\]
+trong đó $d_{G_R}$ là số hành động ít nhất giữa hai cấu hình trên đồ
+thị nới lỏng. Đây là khoảng cách chính xác trong bài toán nới lỏng và
+là ước lượng chi phí còn lại trong bài toán gốc.
+
+\subsubsection{Xây dựng bảng khoảng cách bằng BFS ngược}
+Hàm \texttt{\_build\_heuristic\_table} thực hiện các bước sau:
+\begin{enumerate}
+    \item Thu thập tập tọa độ của các ô và các cầu. Tại mỗi tọa độ,
+    sinh cấu hình đứng; nếu có ô kề theo trục $x$ hoặc $y$, sinh thêm
+    cấu hình nằm tương ứng. Với mỗi cặp tọa độ phân biệt, sinh cấu
+    hình tách cho cả hai lựa chọn khối con đang được điều khiển.
+
+    \item Gắn từng cấu hình với tập cầu luôn mở và kiểm tra bằng
+    \texttt{is\_valid}. Với mỗi cấu hình hợp lệ $q$, thử cả năm hành
+    động bằng \texttt{apply\_action}. Nếu một hành động đưa $q$ đến
+    $q'$, thêm $q$ vào danh sách tiền nhiệm của $q'$. Như vậy, cạnh
+    $q \to q'$ của đồ thị thuận được lưu để có thể duyệt ngược từ
+    $q'$ về $q$.
+
+    \item Gán khoảng cách $0$ cho tất cả cấu hình đứng trên ô đích và
+    đưa chúng vào hàng đợi \texttt{deque}. Đây là các nguồn khởi đầu
+    của BFS trên đồ thị đảo cạnh.
+
+    \item Lần lượt lấy cấu hình $q'$ ở đầu hàng đợi. Với mỗi tiền
+    nhiệm $q$ chưa có khoảng cách, gán
+    \[
+        \operatorname{distance}[q]
+        = \operatorname{distance}[q'] + 1
+    \]
+    rồi thêm $q$ vào cuối hàng đợi. Mỗi cấu hình chỉ được gán khoảng
+    cách ở lần đầu tiên được phát hiện. Khi hàng đợi rỗng, trả về từ
+    điển khoảng cách làm bảng heuristic.
+\end{enumerate}
+
+Mọi hành động đều có chi phí $1$, kể cả hành động đổi khối con, nên
+BFS duyệt theo từng lớp khoảng cách và lần phát hiện đầu tiên cho
+khoảng cách ngắn nhất. DFS không bảo đảm tính chất này. Việc sử dụng
+danh sách tiền nhiệm cũng cần thiết vì các chuyển trạng thái có thể
+có hướng: không thể mặc định rằng thực hiện hành động ngược sẽ đảo
+được hiệu ứng tách khối hoặc dịch chuyển do công tắc gây ra.
+
+Trong quá trình chạy A*, hàm \texttt{\_heuristic\_function} chỉ tra
+bảng bằng khóa \texttt{state.block}. Hai trạng thái thực có cùng cấu
+hình khối nhưng khác tập cầu đang mở sẽ nhận cùng giá trị heuristic,
+mặc dù chúng vẫn được A* phân biệt khi lưu \texttt{g\_score}. Cấu hình
+không có trong bảng nhận giá trị \texttt{math.inf}, tức là không có
+đường đến đích ngay cả trong bài toán nới lỏng. Giá trị này không làm
+thuật toán kết thúc sớm: cài đặt hiện tại vẫn đưa nút vào hàng đợi
+ưu tiên với giá trị $f$ tương ứng.
+
+\subsubsection{Admissible and Consitent}
+Xét một lời giải của bài toán gốc có $k$ hành động. Khi mở sẵn tất cả
+cầu và bỏ các hiệu ứng thay đổi cầu, chuỗi cấu hình khối của lời giải
+đó vẫn tạo thành một đường đi hợp lệ đến đích trong đồ thị nới lỏng.
+Do BFS trả về khoảng cách ngắn nhất trên đồ thị này, ta có
+\[
+    h(s) \leq k.
+\]
+Chọn $k = h^*(s)$, với $h^*(s)$ là chi phí lời giải tối ưu từ $s$,
+suy ra $h(s) \leq h^*(s)$. Vì vậy, heuristic có tính chấp nhận được.
+Đặc biệt, trạng thái đích có $h(s)=0$; nếu $h(s)=+\infty$ thì trạng
+thái thực cũng không thể có lời giải.
+
+Đối với tính nhất quán, xét một chuyển trạng thái hợp lệ $s \to s'$.
+Chuyển động tương ứng giữa hai cấu hình khối cũng tồn tại trong đồ
+thị nới lỏng với chi phí $1$. Đi từ cấu hình của $s$ sang cấu hình
+của $s'$, rồi theo đường ngắn nhất đến đích từ đó, là một phương án
+đến đích. Khoảng cách ngắn nhất từ cấu hình của $s$ không thể lớn hơn
+chi phí của phương án này, nên
+\[
+    h(s) \leq 1 + h(s').
+\]
+Do đó, heuristic có tính nhất quán. Kết hợp với chi phí hành động
+bằng $1$ và cơ chế cập nhật chi phí tốt nhất trong \texttt{g\_score},
+A* trả về lời giải có số hành động ít nhất khi tìm được đích.
+
+\subsubsection{Chi phí tính toán và giới hạn}
+Bảng heuristic được xây dựng một lần khi khởi tạo một đối tượng
+\texttt{AStarSolver} và được dùng lại trong quá trình tìm kiếm của
+đối tượng đó. Mỗi lần tra cứu có chi phí trung bình $O(1)$ nhờ sử
+dụng từ điển, thay vì phải chạy một phép tìm đường mới cho từng nút.
+
+Đổi lại, bước tiền xử lý phải liệt kê cả các cấu hình tách khối.
+Nếu tập tọa độ có $n$ phần tử, riêng phần này có
+$2\binom{n}{2}=n(n-1)$ cấu hình ứng viên, nên tổng số cấu hình ứng
+viên tăng theo $O(n^2)$, kể cả khi bản đồ không có công tắc tách khối.
+Sau khi có đồ thị, BFS ngược cần thời gian
+$O(|V_R|+|E_R|)$; việc lưu đồ thị tiền nhiệm và bảng khoảng cách cần
+bộ nhớ $O(|V_R|+|E_R|)$. Chi phí dựng đồ thị còn bao gồm việc kiểm tra
+luật và tra cứu ô trên bàn cờ, nên không thể đồng nhất toàn bộ thời
+gian tiền xử lý với riêng chi phí BFS.
+
+Heuristic vẫn có thể nhỏ hơn đáng kể so với chi phí thực tế nếu lời
+giải phải đi vòng để mở cầu. Đây là phần thông tin đã được bỏ qua
+khi nới lỏng bài toán. Các kiểm thử hiện có đối chiếu độ dài lời giải
+A* với BFS trên năm bản đồ \texttt{map01}, \texttt{map02},
+\texttt{map04}, \texttt{map08} và \texttt{map09}; đồng thời kiểm tra
+bất đẳng thức nhất quán trên các chuyển trạng thái được BFS khảo sát
+và tính chấp nhận được dọc theo lời giải tối ưu tìm được.

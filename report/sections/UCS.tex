@@ -1,8 +1,8 @@
 % Phần đóng góp: Nguyễn Thành Bảo. Đối chiếu BackEnd/Solver/UCSSolver.py.
-\subsection{Tìm kiếm theo chi phí đồng nhất (UCS)}
+\section{Tìm kiếm theo chi phí đồng nhất (UCS)}
 \label{sec:ucs}
 
-\subsubsection{Mô hình trạng thái và chi phí}
+\subsection{Mô hình trạng thái và chi phí}
 
 Thuật toán UCS (Uniform-Cost Search) tìm lời giải có tổng chi phí nhỏ nhất.
 Trong chương trình, mỗi đỉnh của đồ thị là một \texttt{GameState}, gồm trạng
@@ -21,7 +21,7 @@ khối con. Với đường đi gồm $k$ hành động:
 \]
 Do đó, tối thiểu hóa chi phí cũng là tối thiểu hóa số hành động.
 
-\subsubsection{Cấu trúc dữ liệu và quá trình tìm kiếm}
+\subsection{Cấu trúc dữ liệu và quá trình tìm kiếm}
 
 Lớp \texttt{UCSSolver} kế thừa \texttt{BaseSolver}, dùng min-heap của Python
 để lấy node có chi phí nhỏ nhất. Mỗi phần tử heap có dạng
@@ -65,7 +65,7 @@ của \texttt{SearchNode}~\cite{bloxorz_ucs_source}.
     \end{algorithmic}
 \end{algorithm}
 
-\subsubsection{Tính chất và giới hạn}
+\subsection{Tính chất và giới hạn}
 
 Với số trạng thái hữu hạn và chi phí cạnh dương, khi lấy node hợp lệ có
 chi phí nhỏ nhất ra khỏi heap, không thể có đường đi chưa xử lý nào tới
@@ -86,12 +86,3 @@ bước. UCS không được kỳ vọng luôn nhanh hơn BFS; heap còn có chi
 lý riêng. Lợi ích của cơ chế cập nhật chi phí thể hiện khi mở rộng bài toán
 sang các cạnh có trọng số khác nhau. Trường hợp này đã được kiểm thử bằng
 đồ thị tổng hợp, không thay đổi hàm chi phí của game.
-
-\subsubsection{Giao diện và kiểm thử}
-
-Lời gọi trực tiếp \texttt{UCSSolver.solve(initial\_state)} trả danh sách
-hành động, danh sách rỗng nếu đầu vào đã ở đích, hoặc \texttt{None} nếu
-không có lời giải. Solver không sửa bàn cờ hay trạng thái đầu vào.
-Các kiểm thử trong \path{tests/test_ucs.py} đối chiếu độ dài với BFS,
-replay lời giải trên map01, map02, map04, map08 và map09; kiểm tra chu
-trình vô nghiệm, cập nhật đường đi tốt hơn và bỏ qua phần tử heap cũ.
