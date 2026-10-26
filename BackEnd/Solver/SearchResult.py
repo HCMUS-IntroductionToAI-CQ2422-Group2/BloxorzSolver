@@ -8,7 +8,7 @@ class SearchResult:
     algorithm: str
     status: str
     actions: list[Move] = field(default_factory=list)
-    expanded_nodes: int = 0
+    expanded_nodes: int | None = 0
     search_time_s: float = 0.0
     peak_memory_bytes: int | None = None
     message: str = ""

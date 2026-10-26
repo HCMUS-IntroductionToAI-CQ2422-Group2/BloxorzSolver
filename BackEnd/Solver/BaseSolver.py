@@ -1,5 +1,3 @@
-import time
-import tracemalloc
 from abc import ABC, abstractmethod
 
 from BackEnd.logic.game_rules import GameRules
@@ -14,7 +12,7 @@ class BaseSolver(ABC):
         self.rules = rules
         self.benchmark = benchmark
         for item in self.rules.board.tile:
-            if item.type == "Goal": 
+            if item.type == "Goal":
                 self.x_goal, self.y_goal = item.x, item.y
                 break
 

@@ -180,9 +180,10 @@ def test_split_cube_switch_replay_does_not_roll_cube(app):
     assert app.animation is None
 
 
-def test_worker_limit_shows_no_replay_or_fake_solution(app, monkeypatch):
+@pytest.mark.parametrize("algorithm", ["BFS", "DFS", "UCS", "A*"])
+def test_worker_limit_shows_no_replay_or_fake_solution(app, monkeypatch, algorithm):
     monkeypatch.setattr("FrontEnd.app.SEARCH_NODE_LIMIT", 0)
-    app.start_search("BFS")
+    app.start_search(algorithm)
     result = wait_for_search(app)
     assert result.status == "limit"
     assert result.path_cost is None

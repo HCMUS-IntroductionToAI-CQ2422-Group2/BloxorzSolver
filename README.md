@@ -57,11 +57,14 @@ Restart before each run to compare algorithms from the same initial state.
 - `BackEnd/Solver/`: BFS uses FIFO; DFS uses LIFO; UCS prioritizes path cost;
   A* prioritizes path cost plus the existing relaxed-board heuristic.
 - `BackEnd/Benchmark.py`: `Benchmark` wraps solver construction and execution;
-  `SearchResult` carries measurements and status to the UI. This centralizes the
+  the shared `BackEnd/Solver/SearchResult.py` carries measurements and status to the UI. This centralizes the
   timing / `tracemalloc` wrapper proposed in the team's BFS/Benchmark branch.
 - `BackEnd/search.py`: dispatches to the four solver classes and defines the
-  worker entry point. Direct `solver.solve(state)` calls still return an action
-  list or `None`; `search.solve(board, state, algorithm)` returns `SearchResult`.
+  worker entry point. Direct BFS/UCS/A* `solver.solve(state)` calls return an
+  action list or `None`; DFS retains main's `SearchResult` return type.
+  `search.solve(board, state, algorithm)` returns the same `SearchResult` type
+  for all four algorithms. BFS also retains `_search(state)` for callers that
+  need the goal node and expanded-node count.
 - `FrontEnd/app.py`: controls, worker lifecycle, benchmark panel and CSV export.
 - `FrontEnd/controller.py`: gameplay and replay state.
 - `GameRules` remains the authority for movement, switches and bridges.

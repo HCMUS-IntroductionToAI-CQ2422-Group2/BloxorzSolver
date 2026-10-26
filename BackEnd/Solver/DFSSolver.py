@@ -56,6 +56,7 @@ class DFSSolver(BaseSolver):
             result.message = "Không có lời giải từ trạng thái đầu vào."
             return result
         except SearchLimitReached:
+            # Let the shared benchmark report resource limits separately.
             raise
         except Exception as error:
             result.status = "error"
