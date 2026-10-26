@@ -1,0 +1,82 @@
+\subsection{Tìm kiếm theo chiều sâu (DFS)}
+
+\subsubsection{Mô hình trạng thái và chi phí}
+DFS tìm một chuỗi hành động hợp lệ đưa khối gỗ đến đích bằng cách ưu tiên duyệt theo chiều sâu. Mỗi trạng thái là một \texttt{GameState} gồm vị trí,
+hướng khối, khối gỗ đang điều khiển và tập cầu đang mở.
+
+Các hành động gồm \texttt{UP}, \texttt{DOWN}, \texttt{LEFT},
+\texttt{RIGHT} và \texttt{SWITCH}. Trạng thái kế tiếp được sinh bằng
+\texttt{GameRules.apply\_action()}, bảo đảm xử lý thống nhất ô dễ vỡ,
+công tắc, cầu và tách/ghép khối. Mọi hành động có chi phí bằng 1,
+kể cả đổi khối con. Với đường đi gồm $k$ hành động:
+\[
+    g(n)=\sum_{i=1}^{k}c_i=k.
+\]
+DFS lưu chi phí đường đi nhưng không dùng chi phí để chọn node mở rộng. Vì vậy thuật toán DFS không đảm bảo tìm được đường đi tối ưu nhất.
+
+\subsubsection{Cấu trúc dữ liệu và quá trình tìm kiếm}
+Lớp \texttt{DFSSolver} kế thừa \texttt{BaseSolver}, sử dụng ngăn xếp LIFO và tập \texttt{visited} chứa toàn bộ \texttt{GameState} 
+để chống lặp. Trạng thái được đánh dấu khi node được lấy khỏi ngăn xếp, node có trạng thái đã được thăm sẽ được bỏ qua.
+
+Các node con được thêm theo thứ tự ngược để ưu tiên xử lý
+\texttt{UP} $\rightarrow$ \texttt{DOWN} $\rightarrow$ \texttt{LEFT}
+$\rightarrow$ \texttt{RIGHT} $\rightarrow$ \texttt{SWITCH}.
+Khi gặp đích, thuật toán truy vết các trường \texttt{parent} và
+\texttt{action} của \texttt{SearchNode} để trả lời giải.
+
+\begin{algorithm}[htbp]
+    \caption{Thuật toán DFS}
+    \label{alg:dfs}
+    \begin{algorithmic}[1]
+        \Require Trạng thái đầu $s_0$, bộ luật sinh trạng thái kế tiếp
+        \Ensure Chuỗi hành động hợp lệ hoặc không có lời giải
+        \State $S \gets$ ngăn xếp chứa node gốc của $s_0$
+        \State $visited \gets \varnothing$
+        \While{$S$ chưa rỗng}
+            \State Lấy node $n$ khỏi đỉnh $S$
+            \If{$state(n) \in visited$}
+                \State Bỏ qua $n$ và tiếp tục vòng lặp
+            \Else
+                \State Thêm $state(n)$ vào $visited$
+                \If{$state(n)$ là đích}
+                    \State \Return chuỗi hành động truy vết từ $n$
+                \EndIf
+                \State $children \gets$ các successor hợp lệ của $state(n)$
+                \For{mỗi $(a,s',c)$ trong $children$ theo thứ tự đảo ngược}
+                    \If{$s' \notin visited$}
+                        \State Tạo node con với trạng thái $s'$, cha $n$, hành động $a$
+                        \State Gán độ sâu $depth(n)+1$ và chi phí $g(n)+c$
+                        \State Đưa node con vào $S$
+                    \EndIf
+                \EndFor
+            \EndIf
+        \EndWhile
+        \State \Return không có lời giải
+    \end{algorithmic}
+\end{algorithm}
+
+\subsubsection{Tính chất và giới hạn}
+Với trạng thái hữu hạn, DFS có chống lặp sẽ tìm được lời giải nếu tồn tại và không bị dừng bởi giới hạn tài nguyên. Tuy nhiên DFS không
+đảm bảo tìm được lời giải tối ưu nhất. Kết quả còn phụ thuộc vào thứ tự duyệt các nhánh.
+
+Gọi $V$ và $E$ là số trạng thái và cạnh trong đồ thị có thể đi tới.
+Nếu xem chi phí sinh mỗi trạng thái kế tiếp và tra bảng băm là hằng số,
+độ phức tạp thời gian là $O(V+E)$. Bộ nhớ phụ của cách cài đặt này
+cũng là $O(V+E)$ do lưu tập \texttt{visited} và có thể giữ nhiều node
+trùng trạng thái trong ngăn xếp. Mỗi trạng thái Bloxorz có tối đa
+năm hành động nên $E \leq 5V$.
+
+\subsubsection{Giao diện và kiểm thử}
+Lời gọi \texttt{DFSSolver.solve(initial\_state)} trả một
+\texttt{SearchResult}, gồm trạng thái kết quả, chuỗi hành động,
+số node mở rộng, thời gian tìm kiếm và bộ nhớ đỉnh Python.
+Node đích và node trùng bị bỏ qua không được tính là node mở rộng.
+Khi chạy qua \texttt{Benchmark}, vượt giới hạn được báo là
+\texttt{limit}, không phải \texttt{no\_solution}.
+
+Các kiểm thử trong \path{tests/test_frontend.py} và
+\path{tests/test_benchmark.py} replay lời giải để xác nhận mọi
+hành động hợp lệ, trạng thái cuối đạt đích và đầu vào không bị
+thay đổi. Các trường hợp bao gồm màn cơ bản, cầu/công tắc,
+ô dễ vỡ và tách khối. Độ dài lời giải DFS không được yêu cầu
+bằng BFS vì DFS không bảo đảm tính tối ưu.
