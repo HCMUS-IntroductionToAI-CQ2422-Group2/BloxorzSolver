@@ -51,8 +51,6 @@ class Benchmark:
             outcome = solver.solve(initial_state)
             self.check_time()
             if isinstance(outcome, SearchResult):
-                # DFS keeps main's public result API. The outer measurements
-                # below still cover construction and enforce the same limits.
                 result = outcome
             else:
                 result.status = "solved" if outcome is not None else "no_solution"

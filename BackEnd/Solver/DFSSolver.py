@@ -2,6 +2,7 @@ from time import perf_counter
 import tracemalloc
 
 from BackEnd.Benchmark import SearchLimitReached
+
 from BackEnd.Solver.BaseSolver import BaseSolver
 from BackEnd.Solver.SearchNode import SearchNode
 from BackEnd.Solver.SearchResult import SearchResult

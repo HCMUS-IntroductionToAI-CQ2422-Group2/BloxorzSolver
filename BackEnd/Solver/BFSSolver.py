@@ -6,7 +6,6 @@ from BackEnd.objects.sharing import Move
 
 class BFSSolver(BaseSolver):
     algorithm_name = "BFS"
-
     def solve(self, initial_state: GameState) -> list[Move] | None:
         goal_node, _ = self._search(initial_state)
         return self.reconstruct_path(goal_node) if goal_node is not None else None
@@ -19,7 +18,7 @@ class BFSSolver(BaseSolver):
             state=initial_state,
             parent=None,
             action=None,
-            path_cost=0
+            path_cost=0,
         )
 
         queue = deque([initial_node])
@@ -49,7 +48,7 @@ class BFSSolver(BaseSolver):
                         parent=current_node,
                         action=action,
                         path_cost=current_node.path_cost + cost,
-                        depth=current_node.depth + 1
+                        depth=current_node.depth + 1,
                     )
                     queue.append(child_node)
 
