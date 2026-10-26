@@ -1,6 +1,8 @@
 from time import perf_counter
 import tracemalloc
 
+from BackEnd.Benchmark import SearchLimitReached
+
 from BackEnd.Solver.BaseSolver import BaseSolver
 from BackEnd.Solver.SearchNode import SearchNode
 from BackEnd.Solver.SearchResult import SearchResult
@@ -53,6 +55,8 @@ class DFSSolver(BaseSolver):
 
             result.message = "Không có lời giải từ trạng thái đầu vào."
             return result
+        except SearchLimitReached:
+            raise
         except Exception as error:
             result.status = "error"
             result.message = f"{type(error).__name__}: {error}"
