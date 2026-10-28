@@ -120,7 +120,9 @@ class App:
             self.choose_solver(algorithm)
         self.cancel_search()
         self.game.replaying = False
-        self.game.clear_solution()
+        # Restart the stage so every algorithm is compared from the same
+        # starting position instead of wherever a previous replay left it.
+        self.game.load_level(self.game.map_name)
         self.animation = None
         self.pending_action = None
         self.victory = None
@@ -469,11 +471,11 @@ class App:
         before = self.game.state
         if action == Move.SWITCH:
             if self.game.move(action) and self.mode == "solver":
-                self.message = "Position changed. Run a search from here."
+                self.message = "Position changed. Running a search restarts the stage."
             return
         self.game.move(action)
         if self.mode == "solver":
-            self.message = "Position changed. Run a search from here."
+            self.message = "Position changed. Running a search restarts the stage."
         if self.game.status == "won":
             self.finished_seconds = monotonic() - self.stage_started
         self.animation = {"before": before, "after": self.game.state,

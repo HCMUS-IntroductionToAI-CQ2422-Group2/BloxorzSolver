@@ -22,9 +22,10 @@ Luồng xử lý được tổ chức thành ba phần:
 
 \subsection{Chạy, dừng và phát lại lời giải}
 
-Tìm kiếm bắt đầu từ vị trí hiện tại, bao gồm trạng thái cầu và khối con
-đang hoạt động. Vì vậy, trước khi so sánh các thuật toán, cần khởi động
-lại cùng một màn để bảo đảm đầu vào giống nhau.
+Khi bấm chạy một thuật toán, giao diện tự khởi động lại màn hiện tại
+(khôi phục đúng trạng thái xuất phát ban đầu, bao gồm trạng thái cầu và
+khối con) trước khi tìm kiếm, nên các thuật toán luôn được so sánh từ
+cùng một đầu vào mà không cần người chơi tự bấm khởi động lại.
 
 Solver chạy trong tiến trình riêng bằng cơ chế \texttt{spawn}, giúp vòng
 lặp giao diện tiếp tục xử lý sự kiện. Người dùng có thể hủy tìm kiếm;
