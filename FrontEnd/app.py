@@ -120,7 +120,9 @@ class App:
             self.choose_solver(algorithm)
         self.cancel_search()
         self.game.replaying = False
-        self.game.clear_solution()
+        # Restart the stage so every algorithm is compared from the same
+        # starting position instead of wherever a previous replay left it.
+        self.game.load_level(self.game.map_name)
         self.animation = None
         self.pending_action = None
         self.victory = None
@@ -163,17 +165,23 @@ class App:
         if self.worker is None:
             return
         if self.connection.poll():
+            result = None
             try:
                 result = self.connection.recv()
                 self.game.set_solution(result, self.search_start)
                 self.message = {"solved": ("Already at the goal." if not result.actions else
-                                          "Solution ready. Press Replay or Step."),
+                                          "Solution found. Replaying at 2 moves/s."),
                                 "no_solution": "No solution from this position.",
                                 "limit": result.message + " Try another algorithm.",
                                 "error": result.message}.get(result.status, result.status)
             except (EOFError, OSError):
                 self.record_search_error("Search worker stopped without a result.")
             self.cancel_search()
+            if result is not None and result.status == "solved" and result.actions:
+                # Auto-play the freshly found solution instead of waiting
+                # for the user to press Replay.
+                self.speed = 2
+                self.toggle_replay()
         elif not self.worker.is_alive():
             self.record_search_error("Search worker stopped without a result.")
             self.cancel_search()
@@ -469,11 +477,11 @@ class App:
         before = self.game.state
         if action == Move.SWITCH:
             if self.game.move(action) and self.mode == "solver":
-                self.message = "Position changed. Run a search from here."
+                self.message = "Position changed. Running a search restarts the stage."
             return
         self.game.move(action)
         if self.mode == "solver":
-            self.message = "Position changed. Run a search from here."
+            self.message = "Position changed. Running a search restarts the stage."
         if self.game.status == "won":
             self.finished_seconds = monotonic() - self.stage_started
         self.animation = {"before": before, "after": self.game.state,

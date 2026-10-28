@@ -22,9 +22,10 @@ Luồng xử lý được tổ chức thành ba phần:
 
 \subsection{Chạy, dừng và phát lại lời giải}
 
-Tìm kiếm bắt đầu từ vị trí hiện tại, bao gồm trạng thái cầu và khối con
-đang hoạt động. Vì vậy, trước khi so sánh các thuật toán, cần khởi động
-lại cùng một màn để bảo đảm đầu vào giống nhau.
+Khi bấm chạy một thuật toán, giao diện tự khởi động lại màn hiện tại
+(khôi phục đúng trạng thái xuất phát ban đầu, bao gồm trạng thái cầu và
+khối con) trước khi tìm kiếm, nên các thuật toán luôn được so sánh từ
+cùng một đầu vào mà không cần người chơi tự bấm khởi động lại.
 
 Solver chạy trong tiến trình riêng bằng cơ chế \texttt{spawn}, giúp vòng
 lặp giao diện tiếp tục xử lý sự kiện. Người dùng có thể hủy tìm kiếm;
@@ -32,11 +33,13 @@ lặp giao diện tiếp tục xử lý sự kiện. Người dùng có thể h�
 worker. UI có thêm thời hạn giám sát để dừng worker không phản hồi và
 không sử dụng kết quả cũ sau khi trạng thái chơi thay đổi.
 
-Khi tìm được lời giải, \textit{Replay/Pause} phát hoặc tạm dừng chuỗi hành
-động, còn \textit{Step} thực hiện một hành động. Tốc độ phát lại điều chỉnh
-từ 1 đến 10 hành động/giây. Replay lại từ đầu khôi phục trạng thái xuất
-phát của lần tìm kiếm; thao tác di chuyển thủ công loại bỏ lời giải và
-số liệu cũ. Việc phát lại lời giải tự động không ghi sao hoặc mở khóa
+Khi tìm được lời giải, giao diện tự động phát lại (Replay) chuỗi hành động
+ở tốc độ 2 hành động/giây, không cần người chơi tự bấm Replay;
+\textit{Replay/Pause} vẫn dùng để tạm dừng hoặc tiếp tục, còn \textit{Step}
+thực hiện một hành động. Tốc độ phát lại điều chỉnh từ 1 đến 10 hành
+động/giây. Replay lại từ đầu khôi phục trạng thái xuất phát của lần tìm
+kiếm; thao tác di chuyển thủ công loại bỏ lời giải và số liệu cũ. Việc
+phát lại lời giải tự động không ghi sao hoặc mở khóa
 chiến dịch thủ công.
 
 \subsection{Hiển thị kết quả và xuất dữ liệu}
