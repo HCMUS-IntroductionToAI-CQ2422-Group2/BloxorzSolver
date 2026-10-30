@@ -5,6 +5,8 @@
 % ==============================================================================
 \documentclass[12pt,a4paper]{article}
 \usepackage{scrextend}
+\usepackage{longtable}
+\usepackage{array}
 \changefontsizes{13pt}
 
 % Nạp gói cấu hình chuẩn nhận diện FIT - HCMUS
@@ -89,11 +91,13 @@
 
 \input{sections/game_implement.tex}
 \input{sections/benchmark.tex}
+\input{sections/appendix.tex}
 % \input{sections/verification.tex} Mục này cần xem lại
 % ==============================================================================
 % TÀI LIỆU THAM KHẢO (BIBLIOGRAPHY)
 % ==============================================================================
 \newpage
+\nocite{*}
 \bibliographystyle{plain}
 \bibliography{references}
 

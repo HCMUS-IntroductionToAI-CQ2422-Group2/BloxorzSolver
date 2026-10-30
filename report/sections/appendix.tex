@@ -1,0 +1,61 @@
+\newpage
+\section*{Phụ lục: Sử dụng Trí tuệ Nhân tạo (Generative AI)}
+\addcontentsline{toc}{section}{Phụ lục: Sử dụng Trí tuệ Nhân tạo (Generative AI)}
+
+Trong quá trình thực hiện đồ án, nhóm chúng em đã sử dụng các công cụ Trí tuệ nhân tạo tạo sinh (Generative AI) bao gồm ChatGPT, Gemini, Claude và Codex như một trợ lý ảo để tối ưu hóa thời gian làm việc. Cụ thể, AI được ứng dụng trong các khâu:
+\begin{itemize}
+    \item \textbf{Thiết kế hệ thống:} Gợi ý cách phân rã các lớp (class) Hướng đối tượng cho bản đồ và các loại gạch (Tiles, Bridges).
+    \item \textbf{Tìm kiếm giải pháp:} Đề xuất các hàm Heuristic tiềm năng cho thuật toán A* và giải thích các khái niệm học thuật.
+    \item \textbf{Sửa lỗi (Debugging):} Hỗ trợ dò tìm lỗi trong giao diện UI và tối ưu hóa cấu trúc dữ liệu.
+    \item \textbf{Trình bày văn bản:} Hỗ trợ định dạng cấu trúc báo cáo bằng ngôn ngữ LaTeX.
+\end{itemize}
+
+Nhóm cam kết chỉ sử dụng AI ở mức độ tham khảo và hỗ trợ định hướng. Toàn bộ logic cốt lõi của các thuật toán (BFS, DFS, UCS, A*) đều do các thành viên tự cài đặt và tinh chỉnh. Dưới đây là nhật ký các câu lệnh (prompts) chính mà nhóm đã sử dụng:
+
+\renewcommand{\arraystretch}{1.3}
+\begin{longtable}{|>{\raggedright\arraybackslash}p{7.5cm}|l|l|}
+    \caption{Prompt Logs của nhóm}
+    \label{tab:prompt_logs} \\
+    \hline
+    \textbf{Câu lệnh (Prompt)} & \textbf{Nền tảng} & \textbf{Người sử dụng} \\
+    \hline
+    \endfirsthead
+    
+    \multicolumn{3}{c}
+    {\tablename\ \thetable\ -- \textit{Tiếp tục từ trang trước}} \\
+    \hline
+    \textbf{Câu lệnh (Prompt)} & \textbf{Nền tảng} & \textbf{Người sử dụng} \\
+    \hline
+    \endhead
+    
+    \hline
+    \multicolumn{3}{r}{\textit{Xem tiếp trang sau...}} \\
+    \endfoot
+    
+    \endlastfoot
+
+    Với bài toán Bloxorz Solver, hàm heuristic tôi dùng khoảng cách Manhattan thì có vẻ không hiệu quả. Hãy đề xuất cho tôi cách tiếp cận khác & ChatGPT & Hoàng Minh \\
+    \hline
+    Bạn xem thuật toán A* hiện tại tôi cài đúng hướng chưa. Cái heuristic còn trường hợp bị chia đôi tôi chưa cài, nên bạn xem tạm thuật toán thôi & Codex & Hoàng Minh \\
+    \hline
+    Sinh cho tôi 5 testcase từ 20 maps, đảm bảo đủ các trường hợp Bridge, Switch, Teleport,... & Codex & Hoàng Minh \\
+    \hline
+    Truy cập trang http://www.mlsite.net/bloxorx/, xem 25 maps đầu tiên và tiến hành khởi tạo maps dựa vào những thứ có sẵn trong project này cho tôi & Codex & Hoàng Minh \\
+    \hline
+    Tạo class Tile, Bridge, FragileTile bằng @dataclass(frozen=True) trong Python. Tách trạng thái đóng/mở cầu ra cho GameState quản lý & Gemini & Phan Nhật Minh \\
+    \hline
+    Viết class BaseSolver có hàm solve() bọc ngoài để đo time với tracemalloc. Bên trong gọi hàm trừu tượng \_search() để các thuật toán con kế thừa & Gemini & Phan Nhật Minh \\
+    \hline
+    Cài thuật toán BFS kế thừa BaseSolver. Dùng collections.deque làm hàng đợi và set để lưu state đã duyệt & Gemini & Phan Nhật Minh \\
+    \hline
+    Sửa hết lỗi UI cho tôi & Claude & Nguyễn Thành Bảo \\
+    \hline
+    Tạo nhánh Bảo rồi hoàn thành DL công việc cho tôi & Codex & Nguyễn Thành Bảo \\
+    \hline
+    fix bug đi & Claude & Nguyễn Xuân Lộc \\
+    \hline
+    Kiểm tra những điểm conflict giữa nhánh hiện tại và main & Claude & Nguyễn Xuân Lộc \\
+    \hline
+    Khởi tạo thêm 15 map mới dựa trên 20 map hiện tại & Claude & Nguyễn Xuân Lộc \\
+    \hline
+\end{longtable}
