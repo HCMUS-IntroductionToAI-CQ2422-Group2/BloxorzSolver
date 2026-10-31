@@ -1,0 +1,45 @@
+\section{Tìm kiếm theo chiều rộng (BFS)}
+
+\subsection{Cấu trúc dữ liệu và quá trình tìm kiếm}
+Thuật toán Tìm kiếm theo chiều rộng (Breadth-First Search - BFS) duyệt qua không gian trạng thái bằng cách mở rộng tất cả các nút ở độ sâu hiện tại trước khi chuyển sang các nút ở độ sâu lớn hơn. 
+
+Trong đồ án này, thuật toán BFS được cài đặt kế thừa từ lớp \texttt{BaseSolver}, với các cấu trúc dữ liệu cốt lõi như sau:
+\begin{itemize}
+    \item \textbf{Cấu trúc Hàng đợi (Queue):} Sử dụng cấu trúc dữ liệu \texttt{deque} từ thư viện \texttt{collections} của Python. Việc sử dụng \texttt{deque} giúp tối ưu hóa thời gian thao tác thêm và lấy phần tử ở hai đầu với độ phức tạp $O(1)$, khắc phục được hiện tượng nghẽn cổ chai của \texttt{list} thông thường khi xử lý số lượng nút lớn.
+    \item \textbf{Quản lý trạng thái đã duyệt (Visited Set):} Sử dụng một \texttt{set} để lưu trữ các trạng thái (\texttt{GameState}) đã được mở rộng. Cơ chế này đóng vai trò quan trọng trong việc phát hiện chu trình (cycle detection), đảm bảo thuật toán không bị rơi vào vòng lặp vô tận khi khối hộp di chuyển qua lại giữa các ô đã đi qua.
+    \item \textbf{Lưu vết đường đi (SearchNode):} Mỗi trạng thái được bọc trong một đối tượng \texttt{SearchNode}, lưu trữ tham chiếu \texttt{parent} trỏ về nút cha và hành động (\texttt{action}) đã thực hiện. Khi chạm đến ô đích, bộ giải truy vết ngược từ nút đích về nút gốc để tạo thành chuỗi lời giải hoàn chỉnh đưa vào giao diện.
+\end{itemize}
+
+\subsection{Tính chất và đánh giá}
+\begin{itemize}
+    \item \textbf{Tính đầy đủ (Completeness):} BFS đảm bảo tính đầy đủ. Do không gian trạng thái của trò chơi Bloxorz là một đồ thị hữu hạn (giới hạn bởi kích thước bản đồ và các hướng nằm của khối), BFS chắc chắn sẽ tìm thấy lời giải nếu màn chơi đó thực sự có đường đi đến đích.
+    \item \textbf{Tính tối ưu (Optimality):} Trong bài toán Bloxorz, mỗi bước di chuyển (trượt, lăn, lật khối) đều có chi phí bước đi là $1$. Vì chi phí bước đi là đồng nhất, giải pháp do BFS tìm ra luôn là giải pháp tối ưu về số lượng hành động (đường đi ngắn nhất).
+    \item \textbf{Độ phức tạp bộ nhớ (Space Complexity):} Nhược điểm lớn nhất của BFS là tiêu tốn quá nhiều dung lượng bộ nhớ (Peak Memory). Trong trường hợp xấu nhất, nó phải lưu trữ toàn bộ biên (frontier) của đồ thị tìm kiếm, dẫn đến độ phức tạp không gian là $O(b^d)$ (với $b$ là hệ số phân nhánh trung bình, $d$ là độ sâu của lời giải). Điều này thể hiện rõ trong các biểu đồ Benchmark khi đo lường RAM tiêu thụ trên các bản đồ cấp độ khó.
+\end{itemize}
+
+\begin{algorithm}[H]
+\caption{Thuật toán BFS}
+\label{alg:bfs}
+\begin{algorithmic}[1]
+\Require Trạng thái đầu $s_0$, bộ luật sinh trạng thái kế tiếp
+\Ensure Chuỗi hành động hợp lệ hoặc không có lời giải
+\State $Q \gets$ hàng đợi (queue) chứa node gốc của $s_0$
+\State $visited \gets \{s_0\}$
+\While{$Q$ chưa rỗng}
+    \State Lấy node $n$ khỏi đầu $Q$
+    \If{$state(n)$ là đích}
+        \State \Return chuỗi hành động truy vết từ $n$
+    \EndIf
+    \State $children \gets$ các successor hợp lệ của $state(n)$
+    \For{mỗi $(a,s',c)$ trong $children$}
+        \If{$s' \notin visited$}
+            \State Thêm $s'$ vào $visited$
+            \State Tạo node con với trạng thái $s'$, cha $n$, hành động $a$
+            \State Gán độ sâu $depth(n)+1$ và chi phí $g(n)+c$
+            \State Đưa node con vào cuối $Q$
+        \EndIf
+    \EndFor
+\EndWhile
+\State \Return không có lời giải
+\end{algorithmic}
+\end{algorithm}
